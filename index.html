@@ -32,7 +32,6 @@ color:var(--ink);
 font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif;
 font-size:17px;
 line-height:1.5;
-min-height:100vh;
 }
 .wrap{max-width:980px;margin:0 auto;padding:28px 18px 80px}
 h1,h2,h3,h4{font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-weight:700; color:var(--ink); margin:0 0 6px}
@@ -388,6 +387,17 @@ footer{
 }
 
 </style>
+
+<style id="sanmungo-iframe-height-css">
+html, body{
+  min-height:0 !important;
+  height:auto !important;
+}
+body{
+  overflow-x:hidden;
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -2091,5 +2101,93 @@ AVVIO
 buildPazienteWizard();
 buildMedimagoWizard();
 </script>
+
+<script id="sanmungo-autoheight" type="text/javascript">
+(function(){
+  "use strict";
+
+  var lastHeight = 0;
+  var timer = null;
+
+  function misuraAltezzaReale(){
+    var wrap = document.querySelector(".wrap");
+
+    if(wrap){
+      var rect = wrap.getBoundingClientRect();
+      return Math.ceil(rect.bottom + window.pageYOffset + 8);
+    }
+
+    return Math.ceil(document.body.getBoundingClientRect().bottom + window.pageYOffset + 8);
+  }
+
+  function inviaAltezza(){
+    var altezza = misuraAltezzaReale();
+
+    if(!altezza || altezza < 100){
+      return;
+    }
+
+    if(Math.abs(altezza - lastHeight) < 2){
+      return;
+    }
+
+    lastHeight = altezza;
+
+    window.parent.postMessage({
+      tipo: "altezzaSanMungo",
+      altezza: altezza
+    }, "*");
+  }
+
+  function programmaInvio(){
+    if(timer){
+      clearTimeout(timer);
+    }
+
+    timer = setTimeout(function(){
+      inviaAltezza();
+
+      setTimeout(inviaAltezza, 80);
+      setTimeout(inviaAltezza, 250);
+    }, 20);
+  }
+
+  window.addEventListener("load", programmaInvio);
+  window.addEventListener("resize", programmaInvio);
+
+  document.addEventListener("click", programmaInvio, true);
+  document.addEventListener("change", programmaInvio, true);
+  document.addEventListener("input", programmaInvio, true);
+
+  if(window.ResizeObserver){
+    var ro = new ResizeObserver(function(){
+      programmaInvio();
+    });
+
+    var wrap = document.querySelector(".wrap");
+    if(wrap){
+      ro.observe(wrap);
+    }
+  }
+
+  if(window.MutationObserver){
+    var mo = new MutationObserver(function(){
+      programmaInvio();
+    });
+
+    mo.observe(document.body, {
+      childList:true,
+      subtree:true,
+      attributes:true,
+      characterData:false
+    });
+  }
+
+  setTimeout(programmaInvio, 100);
+  setTimeout(programmaInvio, 500);
+  setTimeout(programmaInvio, 1200);
+})();
+</script>
+
 </body>
 </html>
