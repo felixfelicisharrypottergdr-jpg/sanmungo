@@ -1,0 +1,2095 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Medimagia — San Mungo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+--parchment:#efe4c8;
+--parchment-dark:#e2d3ab;
+--panel:#fbf3dd;
+--ink:#1e3b2f;
+--ink-soft:#2c4d3d;
+--sage:#5c7a63;
+--gold:#a9812f;
+--gold-light:#c9a24f;
+--grave:#7a2e2e;
+--grave-bg:#f3dcd6;
+--lieve:#3f6b4a;
+--lieve-bg:#dfe9d9;
+--line:#c9b98a;
+--shadow:0 2px 0 rgba(30,59,47,.08), 0 8px 20px rgba(30,59,47,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+background:
+radial-gradient(ellipse at top left, rgba(169,129,47,.10), transparent 55%),
+radial-gradient(ellipse at bottom right, rgba(92,122,99,.12), transparent 55%),
+var(--parchment);
+color:var(--ink);
+font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif;
+font-size:17px;
+line-height:1.5;
+min-height:100vh;
+}
+.wrap{max-width:980px;margin:0 auto;padding:28px 18px 80px}
+h1,h2,h3,h4{font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-weight:700; color:var(--ink); margin:0 0 6px}
+.brand{
+display:flex; align-items:baseline; gap:14px; justify-content:center;
+padding:10px 0 6px; text-align:center; flex-direction:column;
+}
+.brand h1{font-size:clamp(28px,5vw,42px); letter-spacing:.03em}
+.brand p{margin:0; color:var(--sage); font-style:italic}
+.seal-toggle{
+display:flex; justify-content:center; gap:0; margin:22px 0 30px;
+border:2px solid var(--ink); border-radius:999px; overflow:hidden;
+background:var(--panel); box-shadow:var(--shadow); max-width:520px; margin-left:auto; margin-right:auto;
+}
+.seal-toggle button{
+flex:1; border:none; background:transparent; cursor:pointer;
+font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-size:14px; letter-spacing:.06em; text-transform:uppercase;
+padding:14px 10px; color:var(--ink-soft); transition:.15s;
+}
+.seal-toggle button.active{background:var(--ink); color:var(--parchment)}
+.seal-toggle button:not(.active):hover{background:var(--parchment-dark)}
+.panel{
+background:var(--panel); border:1px solid var(--line); border-radius:14px;
+padding:22px 24px; margin-bottom:20px; box-shadow:var(--shadow);
+}
+.panel > h2{
+font-size:20px; border-bottom:2px solid var(--line); padding-bottom:10px; margin-bottom:16px;
+display:flex; align-items:center; gap:10px;
+}
+.panel > h2 .tag{
+font-family:'Courier New',monospace; font-size:11px; background:var(--ink); color:var(--parchment);
+padding:3px 8px; border-radius:6px; letter-spacing:.05em;
+}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+.grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px}
+@media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+label{display:block; font-size:13px; color:var(--sage); font-weight:600; margin-bottom:4px; letter-spacing:.02em}
+input[type=text],input[type=number],select{
+width:100%; padding:9px 10px; border:1.5px solid var(--line); border-radius:8px;
+background:#fff; font-family:Georgia,'Iowan Old Style',serif; font-size:16px; color:var(--ink);
+}
+input[type=checkbox]{transform:scale(1.15); margin-right:6px}
+.field{margin-bottom:14px}
+.btn{
+font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-size:13px; letter-spacing:.04em; text-transform:uppercase;
+background:var(--ink); color:var(--parchment); border:none; border-radius:8px;
+padding:11px 18px; cursor:pointer; transition:.15s;
+}
+.btn:hover{background:var(--ink-soft)}
+.btn.gold{background:var(--gold); color:#2a1f04}
+.btn.gold:hover{background:var(--gold-light)}
+.btn.ghost{background:transparent; border:1.5px solid var(--ink); color:var(--ink)}
+.btn.ghost:hover{background:var(--ink); color:var(--parchment)}
+.btn.small{padding:6px 12px; font-size:11px}
+.pill{
+display:inline-flex; align-items:center; gap:6px; font-family:'Courier New',monospace;
+font-size:12px; padding:4px 10px; border-radius:999px; border:1.5px solid var(--line); background:#fff;
+}
+.class-X{--cc:#3f6b4a}.class-XX{--cc:#7a8a2e}.class-XXX{--cc:#a9812f}.class-XXXX{--cc:#b9622e}.class-XXXXX{--cc:#7a2e2e}
+.class-badge{
+font-family:'Courier New',monospace; font-weight:700; font-size:12px;
+color:#fff; background:var(--cc); padding:2px 7px; border-radius:5px; letter-spacing:.05em;
+}
+.sym-list{max-height:420px; overflow-y:auto; border:1px solid var(--line); border-radius:10px; background:#fff}
+.sym-row{
+display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid var(--parchment-dark);
+cursor:pointer; font-size:15px;
+}
+.sym-row:last-child{border-bottom:none}
+.sym-row:hover{background:var(--parchment)}
+.sym-row.checked{background:var(--lieve-bg)}
+.sym-row .nm{flex:1}
+.result-box{
+border:1.5px dashed var(--gold); border-radius:10px; padding:16px 18px; background:#fffdf5; margin-top:14px;
+}
+.result-box.grave{border-color:var(--grave); background:var(--grave-bg)}
+.result-box.ok{border-color:var(--lieve); background:var(--lieve-bg)}
+.kv{display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px dotted var(--line); font-size:15px}
+.kv:last-child{border-bottom:none}
+.kv b{font-family:'Courier New',monospace}
+table.tidy{width:100%; border-collapse:collapse; font-size:14px}
+table.tidy th{
+text-align:left; font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+color:var(--sage); padding:6px 8px; border-bottom:2px solid var(--line);
+}
+table.tidy td{padding:7px 8px; border-bottom:1px solid var(--parchment-dark); vertical-align:top}
+.muted{color:var(--sage); font-size:14px}
+.note{
+background:var(--parchment-dark); border-left:4px solid var(--gold); padding:10px 14px; border-radius:0 8px 8px 0;
+font-size:14px; margin:12px 0;
+}
+.hidden{display:none !important}
+.tabs{display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap}
+.tabs button{
+font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-size:12px; letter-spacing:.03em; text-transform:uppercase;
+padding:9px 14px; border-radius:8px 8px 0 0; border:1.5px solid var(--line); border-bottom:none;
+background:var(--parchment-dark); color:var(--ink-soft); cursor:pointer;
+}
+.tabs button.active{background:var(--panel); color:var(--ink); border-color:var(--ink)}
+.subtab{display:none}
+.subtab.active{display:block}
+.queue-item{
+display:flex; align-items:center; gap:10px; padding:8px 10px; background:#fff; border:1px solid var(--line);
+border-radius:8px; margin-bottom:6px; font-size:14px;
+}
+.queue-item .x{margin-left:auto; cursor:pointer; color:var(--grave); font-weight:700; font-family:monospace}
+.dice-roll{
+font-family:'Courier New',monospace; font-size:28px; font-weight:700; color:var(--ink);
+background:var(--parchment-dark); display:inline-block; padding:6px 16px; border-radius:8px; margin:6px 0;
+}
+.success{color:var(--lieve); font-weight:700}
+.fail{color:var(--grave); font-weight:700}
+.searchbar{margin-bottom:10px}
+footer{text-align:center; color:var(--sage); font-size:13px; margin-top:40px; font-style:italic}
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-thumb{background:var(--line); border-radius:6px}
+
+/* --- stepper --- */
+.stepper{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px}
+.step-btn{
+font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-size:12px; letter-spacing:.02em;
+padding:8px 12px; border-radius:999px; border:1.5px solid var(--line); background:var(--parchment-dark);
+color:var(--ink-soft); cursor:pointer;
+}
+.step-btn.active{background:var(--ink); color:var(--parchment); border-color:var(--ink)}
+.step-btn.done{border-color:var(--lieve); color:var(--lieve)}
+.step-intro{font-style:italic; color:var(--sage); margin:0 0 16px; font-size:16px}
+.step-nav{display:flex; justify-content:space-between; margin-top:20px}
+.step-body{display:none}
+.step-body.active{display:block}
+
+/* --- dice widget --- */
+.dice-widget{
+border:1.5px solid var(--ink); border-radius:10px; padding:12px 14px; margin:10px 0; background:#fffdf5;
+}
+.dice-tag{
+font-family:'Courier New',monospace; font-size:13px; background:var(--parchment-dark); padding:8px 10px;
+border-radius:6px; word-break:break-word; user-select:all; margin-bottom:8px;
+}
+.dice-actions{display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap}
+.dice-input{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.dice-input input{width:90px}
+.dice-out{margin-top:8px; font-size:14px}
+.guaritore-card{
+border:1.5px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:10px; background:#fff;
+display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+}
+.guaritore-card .nome{font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-weight:700}
+.guaritore-card .stat{font-family:'Courier New',monospace; font-size:12px; color:var(--sage)}
+.guaritore-card .x{margin-left:auto; cursor:pointer; color:var(--grave); font-weight:700; font-family:monospace}
+.prep-block{border:1.5px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:14px; background:#fbfaf3}
+.prep-block > .prep-title{font-weight:700; color:var(--ink-soft); margin-bottom:10px; font-size:15px}
+.seg{display:flex; gap:0; border:1.5px solid var(--ink); border-radius:8px; overflow:hidden; max-width:340px; margin-bottom:12px}
+.seg label{flex:1; text-align:center; padding:8px 6px; cursor:pointer; font-size:13px; margin:0; background:#fff; color:var(--ink-soft)}
+.seg label.on{background:var(--ink); color:var(--parchment)}
+.seg input{display:none}
+.prep-preview{font-size:13px; color:var(--sage); margin-top:8px; padding:8px 10px; background:var(--parchment-dark); border-radius:6px}
+.step-warning{color:var(--grave); font-size:14px; font-weight:600; margin-top:12px; min-height:0}
+.spiega-inline{font-style:italic; color:var(--sage); font-size:13px; line-height:1.4; display:block}
+
+/* ==========================================================
+   PALETTE SAN MUNGO — VERDE CHIARO + ROSSO
+   Solo intervento grafico: logica e contenuti invariati.
+   ========================================================== */
+:root{
+  --parchment:#dcebdd;
+  --parchment-dark:#c8ddcb;
+  --panel:#f1f7f1;
+
+  --ink:#244737;
+  --ink-soft:#365f4a;
+  --sage:#6f9479;
+
+  --gold:#943943;
+  --gold-light:#b85a62;
+
+  --grave:#8c2f39;
+  --grave-bg:#f2dadd;
+
+  --lieve:#4f795d;
+  --lieve-bg:#d6e8d8;
+
+  --line:#a9c8ae;
+  --shadow:0 2px 0 rgba(36,71,55,.08), 0 8px 22px rgba(36,71,55,.10);
+}
+
+body{
+  background:
+    radial-gradient(ellipse at top left, rgba(148,57,67,.08), transparent 52%),
+    radial-gradient(ellipse at bottom right, rgba(79,121,93,.16), transparent 56%),
+    linear-gradient(180deg,#e6f2e7 0%,#d9eadc 100%);
+}
+
+.brand h1{
+  color:#7f2d36;
+}
+
+.brand p{
+  color:#5e8269;
+}
+
+.seal-toggle{
+  border-color:#7f2d36;
+}
+
+.seal-toggle button.active{
+  background:#7f2d36;
+  color:#f4f8f3;
+}
+
+.seal-toggle button:not(.active):hover{
+  background:#d4e5d6;
+}
+
+.panel{
+  background:#f3f8f3;
+  border-color:#a7c5ac;
+}
+
+.panel > h2{
+  color:#7f2d36;
+  border-bottom-color:#b7cfba;
+}
+
+.panel > h2 .tag{
+  background:#7f2d36;
+  color:#f4f8f3;
+}
+
+label{
+  color:#5b8067;
+}
+
+input[type=text],
+input[type=number],
+select{
+  background:#fbfdfb;
+  border-color:#abc7af;
+  color:#244737;
+}
+
+input[type=text]:focus,
+input[type=number]:focus,
+select:focus{
+  outline:none;
+  border-color:#943943;
+  box-shadow:0 0 0 2px rgba(148,57,67,.10);
+}
+
+.btn{
+  background:#315c46;
+  color:#f4f8f3;
+}
+
+.btn:hover{
+  background:#244737;
+}
+
+.btn.gold{
+  background:#943943;
+  color:#fff7f7;
+}
+
+.btn.gold:hover{
+  background:#7f2d36;
+}
+
+.btn.ghost{
+  border-color:#943943;
+  color:#7f2d36;
+}
+
+.btn.ghost:hover{
+  background:#943943;
+  color:#fff;
+}
+
+.step-btn{
+  background:#cfdfd1;
+  border-color:#a9c8ae;
+  color:#355f49;
+}
+
+.step-btn.active{
+  background:#943943;
+  color:#fff;
+  border-color:#7f2d36;
+}
+
+.step-btn.done{
+  border-color:#668d70;
+  color:#426c50;
+}
+
+.note{
+  background:#d4e5d6;
+  border-left-color:#943943;
+}
+
+.result-box{
+  background:#f8fbf8;
+  border-color:#943943;
+}
+
+.dice-widget{
+  background:#f8fbf8;
+  border-color:#6e9477;
+}
+
+.dice-tag,
+.dice-roll,
+.prep-preview{
+  background:#d3e4d5;
+}
+
+.sym-list,
+.guiritore-card,
+.guaritore-card,
+.queue-item,
+.seg label{
+  background:#fbfdfb;
+}
+
+.prep-block{
+  background:#edf5ee;
+  border-color:#abc7af;
+}
+
+/* Classificazioni: dalla salvia al rosso, coerenti con la gravità. */
+.class-X{--cc:#5f8a69}
+.class-XX{--cc:#77946d}
+.class-XXX{--cc:#a45a55}
+.class-XXXX{--cc:#944047}
+.class-XXXXX{--cc:#762832}
+
+.success{
+  color:#426c50;
+}
+
+.fail,
+.step-warning,
+.queue-item .x,
+.guaritore-card .x{
+  color:#8c2f39;
+}
+
+footer{
+  color:#6d8d74;
+}
+
+::-webkit-scrollbar-thumb{
+  background:#9ebda4;
+}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="brand">
+<h1>Ospedale San Mungo per le Malattie e le Ferite Magiche</h1>
+<p>Strumento di gestione Medimagica — Felix Felicis GdR</p>
+</div>
+
+<div class="seal-toggle">
+<button type="button" id="tab-paziente" class="active">Reparto Pazienti</button>
+<button type="button" id="tab-medimago">Reparto Medimaghi</button>
+</div>
+
+<div id="view-paziente"></div>
+<div id="view-medimago" class="hidden"></div>
+
+<footer>Cartella clinica generata automaticamente — verifica sempre col Narratore in caso di dubbio.</footer>
+</div>
+
+<script>
+/* ==========================================================================
+DATI: Classificazione -> tempi/costi di guarigione
+========================================================================== */
+const CLASSI = ["X","XX","XXX","XXXX","XXXXX"];
+const TEMPI = {
+X:     {post:3,  offgameMesi:2, degenza:"3 giorni ONGame",   extra:1, costo:15},
+XX:    {post:5,  offgameMesi:3, degenza:"1 settimana ONGame",extra:1, costo:30},
+XXX:   {post:7,  offgameMesi:4, degenza:"10 giorni ONGame",  extra:2, costo:60},
+XXXX:  {post:9,  offgameMesi:5, degenza:"20 giorni ONGame",  extra:2, costo:90},
+XXXXX: {post:10, offgameMesi:6, degenza:"1 mese ONGame",     extra:3, costo:120},
+};
+function classIndex(c){return CLASSI.indexOf(c);}
+function classeMax(lista){
+if(!lista.length) return null;
+return lista.reduce((m,c)=> classIndex(c)>classIndex(m)?c:m, lista[0]);
+}
+function isGrave(c){return classIndex(c)>=3;} // XXXX o XXXXX
+
+/* ==========================================================================
+DATI: Sintomi
+n=nome, c=classificazione, r=rimedio ONGame, p=passaggi, x=complicazione
+========================================================================== */
+const SINTOMI = [
+{id:"affaticamento",n:"Affaticamento",c:"X",r:"Massaggio Kold-ovstoeretz o Pozione della Fatica",p:"Somministrare una dose di Pozione della Fatica o applicare Massaggio Kold-ovstoeretz.",x:"Per i 2 post successivi il PG si addormenta ONGame se 1 su 1d5."},
+{id:"allucinazioni",n:"Allucinazioni",c:"XX",r:"Massaggio Mahouto-kuoro; Pozione Antipsicotica",p:"Somministrare Pozione Antipsicotica; applicare Massaggio Mahouto-kuoro.",x:"Per 3 post il PG ride con fare isterico se 1 su 1d5."},
+{id:"ansia",n:"Ansia",c:"XX",r:"Massaggio Mahouto-kuoro o Hog-Watch; Pozione Calmante",p:"Bere Pozione Calmante; applicare il massaggio.",x:"Per 3 post il PG canta a squarciagola se 1 su 1d5."},
+{id:"arrossamento",n:"Arrossamento",c:"X",r:"Lozione Lenitiva",p:"Somministrare una dose.",x:"Per 2 post colorito bluastro se 1 su 1d5."},
+{id:"avvgrave",n:"Avvelenamento Grave",c:"XXXX",r:"Antidoto ai Veleni Non Comuni",p:"Somministrare una dose.",x:"Per 4 post continui rigurgiti se 1 su 1d5."},
+{id:"avvlieve",n:"Avvelenamento Lieve",c:"XXX",r:"Antidoto ai Veleni Comuni",p:"Somministrare una dose.",x:"Per 3 post sputacchia ininterrottamente se 1 su 1d5."},
+{id:"bassapressione",n:"Bassa Pressione",c:"XX",r:"Soluzione Mineralina; Tonico Tonificante",p:"Assumere entrambe.",x:"Per 2 post fa flessioni se 1 su 1d5."},
+{id:"bloccocervellare",n:"Blocco Cervellare",c:"X",r:"Chewing-Gum Salivante",p:"Masticare, o diluire in acqua distillata se il PG non è in grado.",x:"Per 2 post lingua verde se 1 su 1d5."},
+{id:"boccasecca",n:"Bocca Secca",c:"XXXX",r:"Pastiglia Antiglobulosa; Elisir di Baruffio; Ricostituente alla Mandragola",p:"Mangiare/diluire; assumere; somministrare.",x:"Per 4 post sangue dal naso se 1 su 1d5."},
+{id:"bollesangue",n:"Bolle di Sangue",c:"XXXX",r:"Nihil Malus/Dolorfast; Pompetta Sterilizzante; Spruzzino Salino; Dottor Vermicolo; Siringa magica (n.2); Cera di Glumbumble; Puffskein Pulitore",p:"Pulire, idratare, drenare le bolle, versare cera e leccarla via.",x:"Per 4 post le bolle diventano pesanti e impediscono il movimento se 1 su 1d5."},
+{id:"bronchiammalati",n:"Bronchi Ammalati",c:"XXX",r:"Essenza di Dittamo; Essenza di Purvincolo; Pastiglia Focolosa",p:"Bere le gocce diluite; mangiare la pastiglia.",x:"Per 3 post emette fumo dalla bocca se 1 su 1d5."},
+{id:"bruciorecutaneo",n:"Bruciore Cutaneo",c:"XX",r:"Massaggio Salem-hani; Lozione Lenitiva; Caramella Gelante",p:"Assumere lozione; ingerire caramella e soffiare; applicare massaggio.",x:"Per 2 post pelle viola se 1 su 1d5."},
+{id:"buchineri",n:"Buchi Neri",c:"X",r:"Obscuro; Siero Aggiustaocchi",p:"Somministrare tre gocce; riparare gli occhi con Obscuro.",x:"Per 2 post vede i volti scambiati se 1 su 1d5."},
+{id:"coliche",n:"Coliche",c:"X",r:"Pozione Antispasmus",p:"Assumere una dose.",x:"Per 2 post spasmi muscolari incontrollati se 1 su 1d5."},
+{id:"collorigido",n:"Collo Rigido",c:"X",r:"Essenza di Dittamo",p:"Bere tre gocce diluite in acqua distillata.",x:"Per 2 post collo bloccato se 1 su 1d5."},
+{id:"colpocalore",n:"Colpo di calore",c:"X",r:"Massaggio Kold-ovstoeretz; Caramella Gelante",p:"Mangiare da stesi; applicare massaggio.",x:"Per 2 post sudore blu nauseabondo se 1 su 1d5."},
+{id:"coma",n:"Coma",c:"XXXXX",r:"Nessun rimedio diretto — il PG esce dal coma guarendo tutti gli altri Sintomi XXX-XXXXX",p:"//",x:"//"},
+{id:"confusione",n:"Confusione",c:"XX",r:"Massaggio Mahouto-kuoro; Pozione Calmante",p:"Bere; applicare massaggio.",x:"Per 2 post fa le capriole se 1 su 1d5."},
+{id:"convulsioni",n:"Convulsioni",c:"XXXX",r:"Siringa magica; Diatsepum; Pozione Antispasmus; Pozione Calmante",p:"Iniettare Diatsepum e Antispasmus; assumere Calmante.",x:"Per 4 post balla in modo incontrollato se 1 su 1d5."},
+{id:"cordestrette",n:"Cordestrette",c:"XX",r:"Caramelle di Melassa di Glumbumble (n.3)",p:"Mangiarle.",x:"Per 2 post prova infinita tristezza se 1 su 1d5."},
+{id:"crampi",n:"Crampi",c:"X",r:"Soluzione Mineralina; Pozione Antispasmus",p:"Bere; assumere.",x:"Per 2 post profuma di mandarino nauseabondo se 1 su 1d5."},
+{id:"cuorefermo",n:"Cuore Fermo",c:"XXXXX",r:"Shock (incantesimo); RCP (Pronto Soccorso)",p:"Utilizzare RCP o l'incantesimo Shock.",x:"//"},
+{id:"cuoreveloce",n:"Cuore Veloce",c:"XXX",r:"RCP (Pronto Soccorso); Caramella Gelante; Pastiglia Cardioamica",p:"Ingerire caramella e soffiare in faccia; applicare RCP; somministrare pastiglia.",x:"Per 3 post cuore a ritmo di musica lirica se 1 su 1d5."},
+{id:"debolezzamuscolare",n:"Debolezza muscolare",c:"XX",r:"Massaggio Castelo-bruto; Soluzione Mineralina (n.2)",p:"Bere; applicare massaggio.",x:"Per 2 post profumo di limone nauseabondo se 1 su 1d5."},
+{id:"delirio",n:"Delirio",c:"XXX",r:"Massaggio Hog-Watch o Uaga-tough; Pozione Calmante (n.2); Pozione Antipsicotica; Estratto di Baruffio (n.2)",p:"Bere Calmante e Baruffio; somministrare Antipsicotica; applicare massaggio.",x:"Per 3 post emette solo versi animali se 1 su 1d5."},
+{id:"difficoltavisive",n:"Difficoltà Visive",c:"XX",r:"Massaggio Hog-Watch; Siero Aggiustaocchi; Pozione Calmante",p:"Somministrare gocce; bere; applicare massaggio.",x:"Per 2 post vede in bianco e nero se 1 su 1d5."},
+{id:"distorsione",n:"Distorsione",c:"XX",r:"Ferula; Nihil Malus; Sgonfiotto; DolorFast",p:"Versare Sgonfiotto; usare Nihil Malus o DolorFast; sistemare l'osso; fasciare con Ferula.",x:"Per 2 post la fasciatura brucia se 1 su 1d5."},
+{id:"doloriaddominali",n:"Dolori addominali",c:"XX",r:"Ferula; Soluzione Acidella",p:"Fasciare l'addome; somministrare la soluzione.",x:"Per 2 post sputa fumo caldo se 1 su 1d5."},
+{id:"ebrezza",n:"Ebrezza",c:"XX",r:"Massaggio Hog-Watch; Soluzione Acidella; Pozione Antipsicotica",p:"Assumere entrambe; applicare massaggio.",x:"Per 2 post vede tutto fortemente illuminato se 1 su 1d5."},
+{id:"ecchimosi",n:"Ecchimosi",c:"XX",r:"Pomata di Bundimun; Sgonfiotto",p:"Applicare la pomata; versare le gocce.",x:"Per 2 post continua a toccarsi e urlare se 1 su 1d5."},
+{id:"emorragiaesterna",n:"Emorragia esterna",c:"XXXX",r:"Nihil Malus; Ferula; Dolorfast; Essenza di Dittamo/Purvincolo; Pompetta Sterilizzante; Dottor Vermicolo; Cera di Glumbumble; Siringa magica; Rimpolpasangue",p:"Lenire il dolore, pulire, applicare le essenze, iniettare la cera, fasciare stretto, somministrare Rimpolpasangue.",x:"Per 4 post versa lacrime di sangue se 1 su 1d5."},
+{id:"emorragiainterna",n:"Emorragia interna",c:"XXXXX",r:"Nihil Malus; Recido; Unio; Dolorfast; Pompetta Sterilizzante; Dottor Vermicolo; Siringa magica; Rimpolpasangue; Essenza di Purvincolo",p:"Lenire il dolore, recidere, drenare, somministrare Rimpolpasangue, bagnare e ricucire.",x:"Per 5 post starnutisce sangue se 1 su 1d5."},
+{id:"febbre",n:"Febbre",c:"X",r:"Pozione Peperina",p:"Assumere una dose.",x:"Per 2 post vapore dalle orecchie se 1 su 1d5."},
+{id:"ferite",n:"Ferite",c:"XXX",r:"Unio; Ferula; Pompetta Sterilizzante; Lozione Lenitiva",p:"Pulire; applicare lozione; ricucire con Unio; coprire con Ferula.",x:"Per 3 post colorito verdognolo se 1 su 1d5."},
+{id:"fiatocorto",n:"Fiato Corto",c:"X",r:"Palloncino Ossigenante",p:"Applicare.",x:"Per 2 post la faccia si gonfia se 1 su 1d5."},
+{id:"formicolio",n:"Formicolio",c:"X",r:"Massaggio Durmstrang-strong o Salem-hani; Soluzione Mineralina",p:"Applicare massaggio; somministrare soluzione.",x:"Per 2 post pelle ruvida come mandarino se 1 su 1d5."},
+{id:"fratturaesposta",n:"Frattura completa (esposta)",c:"XXX",r:"Nihil Malus; Unio; Ferula; Emendo; Massaggio Durmstrang-Strong; DolorFast; Asticello Istruito; Pompetta Sterilizzante; Essenza di Dittamo; Pozione Antibatterica; Spruzzino Salino; Ossofast",p:"Lenire, spingere internamente, pulire, disinfettare, ricucire, fasciare, sistemare l'osso.",x:"Per 3 post: lancia 1d5, la parte diventa rigida se 5."},
+{id:"fratturainterna",n:"Frattura completa (interna)",c:"XXX",r:"Nihil Malus; Ferula; Emendo; Massaggio Durmstrang-Strong; DolorFast; Asticello Istruito; Ossofast",p:"Lenire, immobilizzare, fasciare, sistemare l'osso.",x:"Per 3 post la parte diventa rigida se 1 su 1d5."},
+{id:"fratturaincompleta",n:"Frattura incompleta",c:"XX",r:"Nihil Malus; Emendo; Massaggio Durmstrang-Strong; DolorFast; Ossofast",p:"Lenire; sistemare l'osso.",x:"Per 2 post la parte diventa rigida se 1 su 1d5."},
+{id:"freddostasi",n:"Freddostasi",c:"XXX",r:"Massaggio Castelo-bruto; Pastiglia Focolosa; Occhiopallato",p:"Mangiare da stesi; bere; applicare massaggio.",x:"Per 3 post sudore rosso nauseabondo se 1 su 1d5."},
+{id:"graffi",n:"Graffi",c:"X",r:"Lozione Lenitiva",p:"Applicare una dose.",x:"Per 2 post colorito bluastro se 1 su 1d5."},
+{id:"inappetenza",n:"Inappetenza",c:"X",r:"Tonico Tonificante",p:"Assumere una dose.",x:"Per 2 post erutta vapore dall'odore di miele se 1 su 1d5."},
+{id:"infezione",n:"Infezione",c:"XXX",r:"Essenza di dittamo; Essenza di Purvincolo; Sgonfiotto",p:"Bere le tre gocce di ciascuna.",x:"Per 3 post vede strane luci colorate se 1 su 1d5."},
+{id:"insonnia",n:"Insonnia",c:"X",r:"Massaggio Mahouto-kuoro o Uaga-tough; Infuso di Mela di Biancaneve, Valeriana e Zenzero",p:"Bere l'infuso; applicare massaggio.",x:"Per 2 post morde ciò che ha in mano se 1 su 1d5."},
+{id:"insuffcardiaca",n:"Insufficienza cardiaca",c:"XXXX",r:"Nihil Malus; Recido; Shock; Unio; Dolorfast; Essenza di Purvincolo; Shocker; Colla di Vermicolo",p:"Lenire, recidere, bagnare, applicare lo Shocker, ricucire.",x:"Per 4 post prende la scossa se 1 su 1d5."},
+{id:"insuffpolmonare",n:"Insufficienza polmonare",c:"XXXX",r:"Palloncino Ossigenante; Essenza di Oxygeni (n.3)",p:"Applicare; somministrare tre dosi.",x:"Per 4 post levita come un palloncino se 1 su 1d5."},
+{id:"intorpidimento",n:"Intorpidimento",c:"X",r:"Massaggio Durmstrang-strong",p:"Applicare.",x:"Per 2 post la parte emette russamento se 1 su 1d5."},
+{id:"intossicazione",n:"Intossicazione",c:"XXX",r:"Soluzione Espulsiva; Soluzione Mineralina",p:"Assumere entrambe.",x:"Per 3 post pelle fucsia se 1 su 1d5."},
+{id:"irrigidmuscolare",n:"Irrigidimento muscolare",c:"XXX",r:"Massaggio Beau-Beauxbaton o Salem-hani; Pozione Calmante",p:"Bere; applicare massaggio.",x:"Per 3 post cammina al contrario se 1 su 1d5."},
+{id:"irritabilita",n:"Irritabilità",c:"XX",r:"Massaggio Mahouto-kuoro o Uaga-tough; Pozione Calmante; Elisir dell'Euforia",p:"Somministrare Calmante; bere Elisir; applicare massaggio.",x:"Per 2 post scoppia a piangere se 1 su 1d5."},
+{id:"irritazione",n:"Irritazione",c:"XX",r:"Massaggio Salem-hani; Sgonfiotto; Lozione Lenitiva (n.2)",p:"Versare Sgonfiotto; bere Lozione; applicare massaggio.",x:"Per 2 post colorito verdognolo se 1 su 1d5."},
+{id:"lesionecervellare",n:"Lesione Cervellare",c:"XXXXX",r:"Nihil Malus; Recido; Emendo; Dolorfast; Pompetta Sterilizzante; Spruzzino Salino; Siringa Magica; Rimpolpasangue; Ossofast; Lozione Lenitiva; Pastiglia Antiglobulosa (n.3)",p:"Lenire, aprire la calotta cranica, bagnare, versare Rimpolpasangue, riparare la frattura, ricucire, prevenire cicatrici.",x:"Per 5 post sente la cute spostarsi se 1 su 1d5."},
+{id:"lesionispinale",n:"Lesioni al midollo spinale",c:"XXXXX",r:"Massaggio Beau-Beauxbaton o Durmstrang-Strong; OrganFast; Ricostituente alla Mandragola; Soluzione Mineralina; Tonico Tonificante",p:"Assumere OrganFast; bere Ricostituente; applicare massaggio; assumere Mineralina e Tonico.",x:"Per 5 post cammina gattoni se 1 su 1d5."},
+{id:"lesioniorecchio",n:"Lesioni all'orecchio",c:"XXXX",r:"Pompetta Ematica; Dottor Vermicolo; Essenza di Purvincolo; Cera di Glumbumble; Puffskein Pulitore",p:"Tirare il sangue in vista, usare Vermicolo, versare gocce, tappare con cera, leccarla via.",x:"Per 4 post perde cera di Glumbumble dal naso se 1 su 1d5."},
+{id:"lesioniesterne",n:"Lesioni esterne",c:"XXXX",r:"Nihil Malus; Unio; Dolorfast; Pompetta Sterilizzante; Essenza di Purvincolo/Dittamo; Pinza Removente",p:"Lenire, pulire, bagnare, ricucire; se da creatura/pianta rimuovere corpi esterni prima.",x:"Per 4 post la ferita sembra offenderlo se 1 su 1d5."},
+{id:"lesioniinterne",n:"Lesioni interne",c:"XXXXX",r:"Nihil Malus; Recido; Unio; Dolorfast; Pompetta Sterilizzante; Sgonfiotto; Spruzzino Salino; Essenza di Purvincolo",p:"Lenire, pulire, recidere, idratare, bagnare, ricucire.",x:"Per 5 post perde sale dalla ferita se 1 su 1d5."},
+{id:"liquidopolmonare",n:"Liquido polmonare",c:"XXXX",r:"Ferula; Essenza di Oxygeni; Palloncino Ossigenante; Tentacoli Assetati",p:"Applicare Oxygeni e Palloncino; applicare Tentacoli sul petto; fasciare; rimuovere.",x:"Per 4 post va in apnea se 1 su 1d5."},
+{id:"lividi",n:"Lividi",c:"X",r:"Pasta per la Rimozione dei Lividi",p:"Applicare.",x:"Per 2 post continua a toccarsi e provare fastidio se 1 su 1d5."},
+{id:"malcranio",n:"Mal di Cranio",c:"XX",r:"Massaggio Ilvermorny-ing; Dischi Ristoratori",p:"Utilizzare i dischi; applicare massaggio.",x:"Per 2 post sente campane immaginarie se 1 su 1d5."},
+{id:"malgola",n:"Mal di Gola",c:"X",r:"Pozione per la Gola; Pastiglia Focolosa",p:"Assumere; mangiare.",x:"Per 2 post voce bassa e scura se 1 su 1d5."},
+{id:"maltesta",n:"Mal di Testa",c:"X",r:"Massaggio Ilvermorny-ing; Dischi Ristoratori",p:"Applicare i dischi; applicare massaggio.",x:"Per 2 post sente il suono di un martello se 1 su 1d5."},
+{id:"nasolenza",n:"Nasolenza",c:"XX",r:"Pozione Peperina (n.2)",p:"Assumere due dosi.",x:"Per 2 post non riesce ad emettere suoni se 1 su 1d5."},
+{id:"nausea",n:"Nausea",c:"X",r:"Soluzione Acidella",p:"Somministrare una dose.",x:"Per 2 post sputa saliva gialla se 1 su 1d5."},
+{id:"necrosiesterna",n:"Necrosi Estesa Esterna",c:"XXXXX",r:"Nihil Malus; Ferula; Recido; Dolorfast; Pozione senza Sogni; Essenza di Dittamo/Purvincolo; Cera di Glumbumble; Puffskein Pulitore; Pompetta Sterilizzante; Pozione Mangia-Morte; Lozione Lenitiva",p:"Amputazione della parte necrotizzata, con eventuale protesi a discrezione del player.",x:"Per 5 post incubi ad occhi aperti se 1 su 1d5."},
+{id:"necrosiinterna",n:"Necrosi Estesa Interna",c:"XXXXX",r:"Nihil Malus; Recido; Unio; Ferula; Dolorfast; Pozione senza Sogni; Pompetta Sterilizzante; Essenza di Dittamo/Purvincolo",p:"Rimozione e sostituzione dell'organo necrotizzato.",x:"Per 5 post fitte alla parte interessata se 1 su 1d5."},
+{id:"necrosimoderata",n:"Necrosi Moderata",c:"XXX",r:"Nihil Malus; Recido; Ferula; Dolorfast; Pozione Mangia-Morte; Essenza di dittamo; OrganFast (se interna)",p:"Eliminare il tessuto necrotico, applicare Mangia-Morte, gocce, fasciare o somministrare OrganFast.",x:"Per 3 post crede di vedere fantasmi se 1 su 1d5."},
+{id:"necrosiprofonda",n:"Necrosi Profonda",c:"XXXX",r:"Nihil Malus; Recido; Ferula; Dolorfast; Pozione Mangia-Morte (n.5); Lozione Lenitiva",p:"Eliminare il tessuto necrotico, applicare Mangia-Morte, spalmare Lozione, fasciare.",x:"Per 4 post fitte alla parte interessata se 1 su 1d5."},
+{id:"necrosisuperficiale",n:"Necrosi Superficiale",c:"XX",r:"Nihil Malus; Dolorfast; Pozione Mangia-Morte",p:"Lenire; applicare la Pozione sulla zona.",x:"Per 2 post crede di essere sul punto di morire se 1 su 1d5."},
+{id:"paralisiperm",n:"Paralisi Permanente",c:"XXXXX",r:"Nessun rimedio — non è reversibile in alcun modo",p:"//",x:"Per 5 post appare la gobba se 1 su 1d5."},
+{id:"paralisitemparziale",n:"Paralisi Temporanea Parziale",c:"XXXX",r:"Nihil Malus; Recido; Unio; Ferula; Shock; Massaggio Durmstrang-Strong; DolorFast; Ricostituente alla Mandragola; Pompetta Sterilizzante; Pinza Removente; Asticello Addestrato; Shocker; Colla di Vermicolo; Essenza di Dittamo/Purvincolo; Spruzzino Salino; Soluzione Mineralina; Tonico Tonificante",p:"Lenire, ricostituire, aprire, riposizionare/shockare a seconda della causa, ricucire, fasciare.",x:"Per 4 post appare la gobba se 1 su 1d5."},
+{id:"paralisitemptotale",n:"Paralisi Temporanea Totale",c:"XXXX",r:"Come Paralisi Parziale, con l'aggiunta di Pompetta Ematica, Dottor Vermicolo e Massaggio Uaga-tough",p:"Come sopra, con passaggi aggiuntivi per liberare la visuale dal sangue.",x:"Per 4 post appare la gobba se 1 su 1d5."},
+{id:"pallore",n:"Pallore",c:"X",r:"Rimpolpasangue",p:"Assumere una dose.",x:"Per 2 post ringhia come un cane se 1 su 1d5."},
+{id:"perditacoscienza",n:"Perdita di coscienza",c:"XXXX",r:"Reinnerva; Massaggio Castelo-bruto; Bacca di Balzar; Occhiopallato; Tonico Tonificante; Soluzione Mineralina",p:"Usare Reinnerva o somministrare Bacca/Occhiopallato; assumere Tonico e Mineralina; applicare massaggio.",x:"Per 4 post rimane con gli occhi aperti a lungo se 1 su 1d5."},
+{id:"perditamemoria",n:"Perdita di memoria",c:"XXX",r:"Legilimens; Massaggio Ilvermorny-ing o Mahouto-kuoro; Occhiopallato; Pozione della Memoria; Aguzzaingegno",p:"Bere Occhiopallato; trattare la causa specifica (Legilimens o massaggio); assumere Aguzzaingegno.",x:"Per 3 post recita a memoria l'ultimo libro letto se 1 su 1d5."},
+{id:"perditaorgani",n:"Perdita funzionale degli organi essenziali",c:"XXXXX",r:"Nessun rimedio — solo palliativo, malus perenne deciso dal Narratore in base all'organo",p:"//",x:"//"},
+{id:"perditaarticolazioni",n:"Perdita funzionalità delle articolazioni",c:"XXXXX",r:"Nessun rimedio — malus perenne di 5 Punti Destrezza",p:"//",x:"//"},
+{id:"polmonite",n:"Polmonite",c:"XXX",r:"Essenza di dittamo/Purvincolo/Oxygeni; Pastiglia Focolosa",p:"Bere le gocce; assumere Oxygeni; mangiare la pastiglia.",x:"Per 3 post emette fumo dalla bocca se 1 su 1d5."},
+{id:"prurito",n:"Prurito",c:"X",r:"Massaggio Salem-hani; Lozione Lenitiva",p:"Applicare la lozione; applicare massaggio; non grattarsi.",x:"Per 2 post pelle argentata se 1 su 1d5."},
+{id:"pus",n:"Pus",c:"XX",r:"Essenza di Dittamo",p:"Assumere tre gocce diluite.",x:"Per 2 post pus verdognolo dal naso se 1 su 1d5."},
+{id:"raccoglimento",n:"Raccoglimento",c:"XXX",r:"Ferula; Sgonfiotto; Tentacoli Assetati",p:"Versare Sgonfiotto; applicare Tentacoli; fasciare; sollevare le gambe.",x:"Per 3 post soffre il solletico se 1 su 1d5."},
+{id:"raffreddore",n:"Raffreddore",c:"X",r:"Pozione Peperina",p:"Assumere una dose.",x:"Per 2 post diventa afono se 1 su 1d5."},
+{id:"saccapus",n:"Sacca di Pus",c:"XXX",r:"Nihil Malus; Recido; Unio; Dolorfast; Pompetta Sterilizzante; Siringa magica; Essenza di Purvincolo; Spruzzino Salino",p:"Lenire, pulire, tagliare, drenare, somministrare gocce, chiudere, pulire.",x:"Per 3 post pus verdognolo dal naso se 1 su 1d5."},
+{id:"salivazioneeccessiva",n:"Salivazione Eccessiva",c:"XX",r:"Spugna assorbente",p:"Utilizzare.",x:"Per 2 post tossisce pezzi di spugna se 1 su 1d5."},
+{id:"sbilanciamentomuscolare",n:"Sbilanciamento muscolare",c:"X",r:"Massaggio Castelo-bruto",p:"Applicare.",x:"Per 2 post inciampa ad ogni passo se 1 su 1d5."},
+{id:"shock",n:"Shock",c:"XXXX",r:"Anapneo; Massaggio Uaga-tough; Palloncino Ossigenante; Estratto di Oxygeni; Pozione Calmante",p:"Posizione supina, liberare vie respiratorie, ossigenare, somministrare Calmante, applicare massaggio.",x:"Per 4 post ride a crepapelle se 1 su 1d5."},
+{id:"sonnolenza",n:"Sonnolenza",c:"X",r:"Massaggio Hog-Watch; Occhiopallato",p:"Applicare massaggio; bere una dose.",x:"Per 2 post russa da sveglio se 1 su 1d5."},
+{id:"spasmi",n:"Spasmi",c:"XXX",r:"Massaggio Beau-Beauxbaton o Durmstrang-Strong; Caramella Gelante; Pozione Antispasmus",p:"Applicare massaggio; mangiare caramella; assumere pozione.",x:"Per 3 post capelli verso l'alto se 1 su 1d5."},
+{id:"strappimuscolari",n:"Strappi muscolari",c:"XXX",r:"Massaggio Beau-Beauxbaton; Caramella Gelante",p:"Mangiare e soffiare freddo; applicare massaggio.",x:"Per 3 post si strappa gli indumenti se 1 su 1d5."},
+{id:"sudorazioneeccessiva",n:"Sudorazione Eccessiva",c:"X",r:"Massaggio Kold-ovstoeretz o Salem-hani; Spugna assorbente",p:"Usare la spugna; applicare massaggio.",x:"Per 2 post perde pezzi di spugna dalle orecchie se 1 su 1d5."},
+{id:"tosse",n:"Tosse",c:"X",r:"Pozione per la gola",p:"Assumere una dose.",x:"Per 2 post tono di voce molto acuto se 1 su 1d5."},
+{id:"tossesangue",n:"Tosse con sangue",c:"XXXX",r:"Pozione per la gola; Essenza di Purvincolo; Pompetta Ematica; Dottor Vermicolo",p:"Somministrare pozione; bere gocce; usare pompetta e Vermicolo.",x:"Per 4 post tossisce fumo luminoso se 1 su 1d5."},
+{id:"ulceremucose",n:"Ulcere alle Mucose",c:"XXX",r:"Soluzione Acidella (n.2); Essenza di Purvincolo",p:"Somministrare due dosi; bere dieci gocce diluite.",x:"Per 4 post erutta fumo viola se 1 su 1d5."},
+{id:"ulcerepelle",n:"Ulcere alla Pelle",c:"XXXX",r:"Ferula; Spruzzino Salino; Lozione Lenitiva; Essenza di Dittamo/Purvincolo",p:"Pulire, applicare lozione e gocce, coprire con Ferula.",x:"Per 5 post sangue viola dalle ferite se 1 su 1d5."},
+{id:"ustioni1",n:"Ustioni I grado",c:"XX",r:"Ferula; Massaggio Salem-hani; Lozione Lenitiva; Sgonfiotto; Cenere di Ashwinder",p:"Applicare lozione, sgonfiotto e cenere; fasciare; applicare massaggio.",x:"Per 2 post ustione dorata che puzza di radigorda se 1 su 1d5."},
+{id:"ustioni2",n:"Ustioni II grado",c:"XXX",r:"Nihil Malus; Ferula; Massaggio Salem-hani; DolorFast; Spruzzino Salino; Lozione Lenitiva; Cenere di Ashwinder; Caramella Gelante; Cera di Glumbumble; Puffskein Pulitore",p:"Lenire, idratare, applicare lozione e cenere, raffreddare, applicare cera, fasciare.",x:"Per 3 post ustione azzurra che puzza di sterco di mooncalf se 1 su 1d5."},
+{id:"ustioni3",n:"Ustioni III grado",c:"XXXX",r:"Nihil Malus; Ferula; Massaggio Salem-hani; DolorFast; Spruzzino Salino; Pozione Mangia-Morte; Lozione Lenitiva; Cenere di Ashwinder; Caramella Gelante; Cera di Glumbumble; Puffskein Pulitore",p:"Come Ustioni II con l'aggiunta di Pozione Mangia-Morte.",x:"Per 4 post ustione viola che puzza di topo morto se 1 su 1d5."},
+{id:"ustioni4",n:"Ustioni IV grado",c:"XXXXX",r:"Nihil malus; Recido; Unio; Ferula; Massaggio Salem-hani; Dolorfast; Pompetta Sterilizzante; Essenza di Purvincolo; Lozione Lenitiva; Cenere di Ashwinder; Caramella Gelante; Cera di Glumbumble",p:"Lenire, pulire, recidere, bagnare, ricucire, fasciare — guarita quando trasuda cera di Glumbumble.",x:"Per 5 post bolle scoppiettanti se 1 su 1d5."},
+{id:"vertigini",n:"Vertigini",c:"XX",r:"Obscuro; Manovra di Valsalva; Massaggio Castelo-bruto; Essenza di Purvincolo; Cera di Glumbumble",p:"Bendare, versare gocce, riempire di cera, eseguire la manovra, applicare massaggio.",x:"Per 2 post vede tutto immobile se 1 su 1d5."},
+{id:"vesciche",n:"Vesciche",c:"XX",r:"Nihil Malus; Ferula; Dolorfast; Pompetta Sterilizzante; Spruzzino Salino; Dottor Vermicolo; Caramella Gelante; Lozione Lenitiva",p:"Lenire, pulire, idratare, congelare con la caramella, applicare lozione, fasciare.",x:"Per 2 post le bolle gelate diventano pesanti e impediscono il movimento se 1 su 1d5."},
+{id:"voceroca",n:"Voce Roca",c:"X",r:"Pastiglia Focolosa",p:"Mangiare.",x:"Per 2 post non riesce a sentire nulla se 1 su 1d5."},
+{id:"vomito",n:"Vomito",c:"X",r:"Pasticca Svomitosa; Soluzione Acidella",p:"Mangiare; assumere.",x:"Per 2 post sputacchia ad ogni parola se 1 su 1d5."},
+{id:"vomitosangue",n:"Vomito con sangue",c:"XXXX",r:"Pasticca Svomitosa; Siringa magica; Soluzione Acidella; Pompetta Ematica; Dottor Vermicolo",p:"Somministrare via siringa; bere via siringa; applicare pompetta e Vermicolo.",x:"Per 4 post perde sangue da orecchie e unghie se 1 su 1d5."},
+];
+const SINTOMI_BY_ID = Object.fromEntries(SINTOMI.map(s=>[s.id,s]));
+</script>
+<script>
+/* Costruita per concatenazione per compatibilita con l'editor del forum */
+const EVT_NAME = 'cli' + 'ck';
+function onPress(el, fn){ el.addEventListener(EVT_NAME, fn); }
+function esc(s){
+const d = document.createElement('div');
+d.textContent = s;
+return d.innerHTML;
+}
+function copyText(txt, btn){
+function fatto(){
+const orig = btn.textContent;
+btn.textContent = 'Copiato!';
+setTimeout(function(){ btn.textContent = orig; }, 1400);
+}
+if(navigator.clipboard){
+navigator.clipboard.writeText(txt).then(fatto, function(){ copiaFallback(txt); fatto(); });
+} else {
+copiaFallback(txt);
+fatto();
+}
+}
+function copiaFallback(txt){
+const ta = document.createElement('textarea');
+ta.value = txt;
+ta.style.position = 'fixed';
+ta.style.opacity = '0';
+document.body.appendChild(ta);
+ta.select();
+try{ document.execCommand('copy'); } catch(e){}
+document.body.removeChild(ta);
+}
+let widgetCounter = 0;
+
+/* ==========================================================================
+COMPONENTE DADO COPIABILE
+opts: {faces, addends:[{label,value}], successLabel, onConfirm(risultato, esito, totale)}
+Se totale > faces -> autoconclusivo positivo (nessun dado)
+Se opts.forceFail -> autoconclusivo negativo, con opts.failText, nessun dado
+========================================================================== */
+function renderDiceCheck(container, opts){
+widgetCounter += 1;
+const uid = 'dw' + widgetCounter;
+
+if(opts.forceFail){
+container.innerHTML =
+'<div class="result-box grave"><b>Esito automatico: fallimento.</b><br>' + esc(opts.failText) + '</div>';
+if(opts.onConfirm){ opts.onConfirm(null, 'fail', null); }
+return;
+}
+
+const totale = opts.addends.reduce(function(s,a){ return s + a.value; }, 0);
+const formula = opts.addends.map(function(a){ return a.value + ' ' + a.label; }).join(' + ') + ' = ' + totale;
+
+if(totale > opts.faces){
+container.innerHTML =
+'<div class="result-box ok"><b>Autoconclusivo: nessun dado necessario.</b><br>' +
+esc(opts.successLabel + ' se 1-' + totale + ' (' + formula + ') — e sempre vero, si supera il massimo del dado.') + '</div>';
+if(opts.onConfirm){ opts.onConfirm(null, 'auto', totale); }
+return;
+}
+
+const label = opts.successLabel + ' se 1-' + totale + ' (' + formula + ')';
+const tag = '[dice=1d' + opts.faces + ']' + label + '[/dice]';
+
+container.innerHTML =
+'<div class="dice-widget">' +
+'<div class="muted">Il dado da lanciare e un 1d' + opts.faces + '. Copia il tag, lancialo sul topic dei dadi del forum, poi scrivi qui il risultato: appena il numero e valido lo elabora da solo.</div>' +
+'<div class="dice-tag" id="' + uid + '_tag">' + esc(tag) + '</div>' +
+'<div class="dice-actions">' +
+'<button type="button" class="btn small gold" id="' + uid + '_copy">Copia il dado</button>' +
+'</div>' +
+'<div class="dice-input">' +
+'<label style="margin:0">Risultato ottenuto:</label>' +
+'<input type="number" id="' + uid + '_res" min="1" max="' + opts.faces + '">' +
+'</div>' +
+'<div class="dice-out" id="' + uid + '_out"></div>' +
+'</div>';
+
+onPress(document.getElementById(uid + '_copy'), function(){
+copyText(tag, document.getElementById(uid + '_copy'));
+});
+
+let committed = false;
+const inputEl = document.getElementById(uid + '_res');
+const out = document.getElementById(uid + '_out');
+
+function mostraAnteprima(){
+const r = parseInt(inputEl.value, 10);
+if(isNaN(r) || r < 1 || r > opts.faces){
+out.innerHTML = inputEl.value.length ? '<span class="fail">Il numero deve essere fra 1 e ' + opts.faces + '.</span>' : '';
+if(opts.onLiveChange){ opts.onLiveChange(null, null, totale); }
+return null;
+}
+const ok = r <= totale;
+out.innerHTML = '<span class="' + (ok ? 'success' : 'fail') + '">Risultato ' + r + ' su 1-' + totale + ': ' +
+(ok ? esc(opts.successLabel) : 'non riuscito') + '.</span>';
+if(opts.onLiveChange){ opts.onLiveChange(r, ok ? 'ok' : 'fail', totale); }
+return {r:r, ok:ok};
+}
+
+function conferma(){
+const esito = mostraAnteprima();
+if(!esito){ return; }
+const isCorrection = committed;
+committed = true;
+if(opts.onConfirm){ opts.onConfirm(esito.r, esito.ok ? 'ok' : 'fail', totale, isCorrection); }
+}
+
+inputEl.addEventListener('input', function(){
+mostraAnteprima();
+});
+inputEl.addEventListener('keydown', function(ev){
+if(ev.key === 'Enter'){ conferma(); }
+});
+inputEl.addEventListener('blur', function(){ conferma(); });
+}
+
+/* ==========================================================================
+STEPPER GENERICO
+========================================================================== */
+function buildStepper(root, containerId, steps, startAt){
+let current = startAt || 0;
+const html =
+'<div class="stepper" id="' + containerId + '_nav"></div>' +
+steps.map(function(s, i){
+return '<div class="panel step-body' + (i===current?' active':'') + '" id="' + containerId + '_step' + i + '">' +
+'<h2>' + esc(s.title) + '</h2>' +
+'<p class="step-intro">' + esc(s.intro) + '</p>' +
+'<div id="' + containerId + '_body' + i + '"></div>' +
+'<div class="step-warning" id="' + containerId + '_warn' + i + '"></div>' +
+'<div class="step-nav">' +
+(i>0 ? '<button type="button" class="btn ghost" data-nav="' + containerId + '_prev' + i + '">Indietro</button>' : '<span></span>') +
+(i<steps.length-1 ? '<button type="button" class="btn gold" data-nav="' + containerId + '_next' + i + '">Avanti</button>' : '<span></span>') +
+'</div>' +
+'</div>';
+}).join('');
+root.innerHTML = html;
+
+function renderNav(){
+const nav = document.getElementById(containerId + '_nav');
+nav.innerHTML = steps.map(function(s, i){
+let cls = 'step-btn';
+if(i === current){ cls += ' active'; }
+if(i < current){ cls += ' done'; }
+return '<button type="button" class="' + cls + '" data-goto="' + i + '">' + (i+1) + '. ' + esc(s.short) + '</button>';
+}).join('');
+Array.prototype.forEach.call(nav.querySelectorAll('button'), function(b){
+onPress(b, function(){ goTo(parseInt(b.getAttribute('data-goto'), 10)); });
+});
+}
+
+function goTo(i){
+for(let k=0;k<steps.length;k++){
+document.getElementById(containerId + '_step' + k).classList.remove('active');
+}
+current = i;
+document.getElementById(containerId + '_step' + i).classList.add('active');
+renderNav();
+if(steps[i].onShow){ steps[i].onShow(); }
+try{
+window.scrollTo({top:0, behavior:'smooth'});
+} catch(e){
+try{ window.scrollTo(0,0); } catch(e2){}
+}
+}
+
+steps.forEach(function(s, i){
+if(i>0){
+const prevBtn = root.querySelector('[data-nav="' + containerId + '_prev' + i + '"]');
+onPress(prevBtn, function(){ goTo(i-1); });
+}
+if(i<steps.length-1){
+const nextBtn = root.querySelector('[data-nav="' + containerId + '_next' + i + '"]');
+onPress(nextBtn, function(){
+const warnEl = document.getElementById(containerId + '_warn' + i);
+if(s.canLeave){
+const esito = s.canLeave();
+if(esito !== true){
+if(warnEl){ warnEl.textContent = esito; }
+return;
+}
+}
+if(warnEl){ warnEl.textContent = ''; }
+goTo(i+1);
+});
+}
+});
+
+renderNav();
+if(steps[current].onShow){ steps[current].onShow(); }
+return {
+goTo: goTo,
+bodyId: function(i){ return containerId + '_body' + i; },
+refreshCurrent: function(){ if(steps[current].onShow){ steps[current].onShow(); } }
+};
+}
+
+/* ==========================================================================
+DATI DI SUPPORTO CONDIVISI
+========================================================================== */
+const DIAGNOSI_BONUS = {X:4,XX:3,XXX:2,XXXX:1,XXXXX:0};
+const TERAPIA_BONUS = {X:5,XX:4,XXX:3};
+const CHIRURGIA_BONUS = {XXXX:1,XXXXX:0};
+
+/* ==========================================================================
+PREZZIARIO — Pozioni, Ingredienti, Strumenti Medimagici
+Solo oggetti realmente acquistabili: Incantesimi e Manovre (Ferula, Nihil
+Malus, Unio, Recido, Shock, Anapneo, Reinnerva, Obscuro, Legilimens, RCP,
+Manovra di Valsalva...) non hanno un prezzo, servono solo a conoscerli.
+========================================================================== */
+const POZIONI_PREZZI = {
+"Cioccolato":7,"Pozione Restringente":12,"Pozione Peperina":12,"Soluzione per il Singhiozzo":12,
+"Pozione per la gola":12,"Pozione Calmante":13,"Pozione della Pace":15,"Pasta per la Rimozione dei Lividi":16,
+"Pozione Senza Sogni":15,"Pozione Drizzacapelli":16,"Distillato Soporifero":18,
+"Elisir dell'Euforia":27,"Pomata di Bundimun":28,"Shampoo AntiChiz":29,"Sgonfiotto":31,
+"Pozione Occhiopallato":30,"Chewing-gum Salivante":30,"Lozione Lenitiva":29,"Pastiglia Svomitosa":25,
+"Siero Aggiustaocchi":28,"Soluzione Acidella":27,"Soluzione Mineralina":27,"Tonico Tonificante":25,
+"Antidoto ai Veleni Comuni":31,"Pozione Invecchiante":33,"Pozione Aguzzaingegno":34,"Antidoto ai Filtri d'Amore":33,
+"Furtivuserum":42,"GlowVax":39,"Bundimun 1.0":44,"Bundimun 2.0":40,"Va.Ta.":45,"Kappaccino":44,
+"Vaxerknoll":40,"V. Ashes":44,"MeduVax":40,"Vaccino Algabrax":44,"Vaccino AntiFarfalle":40,
+"Vaccino AntiFertilizzante":40,"Vaccino AntiSchiuma":44,"Vaccino di Semi di Fuoco":44,"Vaccino Stridulo":44,
+"Vaccino Messicano":44,"Vaccino Vampiro":44,"V.Absorbet":44,"AntiRadigordillo":44,"V.Appare":44,
+"V-Transmuto":44,"Leposerum":41,"Pozione della Fatica":43,"Pozione della Resistenza":43,"Pozione Fumogena":45,
+"Pozione Ridente":43,"Essenza di Purvincolo":45,"OssoFast":46,"Pozione Scacciabrufoli":27,
+"Vaccino AntiRgliatite":41,"Vaccino AntiBorbottite":37,"VacciNoCataratta":39,"Vaccino AntiDirix":37,
+"Vaccino AntiMalarica":42,"VacciNoVetustella":42,"Vaccino AntiVaiolo D":42,"Vaccino AntiSpruzzolosi":39,
+"Vaccino AntiSparizione":42,"VacciNO Canterino":42,"Vaccino AntiNundux":46,"Vaccino AntiLavandite":45,
+"Rimpolpasangue":48,"Distillato del Silenzio":49,"Pozione Sguardo della Notte":45,"Pozione Obliviosa":46,
+"Intruglio Confondente":49,"Estratto di Baruffio":45,"Caramella Gelante":43,"Cera di Glumbumble":43,
+"Pastiglia Antiglobulosa":40,"Pastiglia Focolosa":30,"Soluzione Espulsiva":33,"Vaccino AntIra":39,
+"Elisir della Fatica":78,"OrganFast":79,"Diatsepum":81,"Pozione Antipsicotica":78,"Pozione Cardioamica":74,
+"Elisir della Resistenza":79,"Pozione Camaleontica":81,"Vaccino AntiMetropolvere":40,"Pozione Stordente":81,
+"Pozione della Memoria":76,"Distillato della Morte Vivente":79,"Gas Strozzante":85,"Pozione Antifuoco":78,
+"Pozione Antisoffocamento":75,"Essenza di Dittamo":81,"Ricostituente alla Mandragola":85,"Elisir di Baruffio":75,
+"DolorFast":123,"Pozione Atomica":127,"Pozione Paralizzante":123,"Pozione Esplosiva":124,"Pozione Mangia-Morte":146,
+"Antidoto ai Veleni Non Comuni":138,"Antilupo":145,"Essenza di Oxygeni":145,"Pozione Stimolante":136,
+"Distillato del Chiodo Fisso":136,"Pozione Rinvigorente":142
+};
+const STRUMENTI_PREZZI = {
+"Palloncino Ossigenante":20,"Siringa Magica":20,"Spugna Assorbente":30,"Spruzzino Salino":5,
+"Pompetta Ematica":20,"Ragno Indagatore":50,"Pinza Removente":20,"Shocker":50,"Colla di Vermicolo":10,
+"Bacinelle-Raccogli-Sangue":20,"Dischi Ristoratori":30,"Pompetta Sterilizzante":10,"Tentacoli Assetati":20
+};
+const INGREDIENTI_PER_TIER = {
+X: "Aculeo di Istrice,Ala di Pipistrello,Ala di Scriber,Antenna di Duckbill,Artiglio di Duckbill,Bacca di Alloro,Baffo di Mau,Bezoar,Bile di Armadillo,Bruco Peloso Carnivoro,Caccola di Baku,Cervello di Rana,Chela di Kavouras,Coda di Topo,Corteccia di Alloro,Crine di Fiammablu,Crine di Hanabira,Cristallo di Fiammablu,Cuore di Coccodrillo,Dente di Ninki Nanka,Dente di Wiggity,Escremento di Wiggity,Fico,Fiore di Aloe,Fiore di Dittamo,Fiore di Hanabira,Fiore di Lavanda,Foglia di Alloro,Foglia di Aloe,Foglia di Artemisia,Foglia di Centinodia,Foglia di Coclearia,Foglia di Dittamo,Foglia di Erba Fondente,Foglia di Levistico,Foglia di Menta Piperita,Foglia di Salvia,Guscio di Shellusk,Ingrediente Base,Lacrima di Birdengold,Latte di Marmite,Legno di Alloro,Milza di Lucertola,Milza di Pipistrello,Milza di Topo,Mosca Crisopa,Muco di Lombrico,Muco di Vermicolo,Occhio di Anguilla,Occhio di Pesce palla,Occhio di Scarabeo,Olio di Rosa,Olio di Valeriana,Olio essenziale di Artemisia,Pelle di Baku,Pelle di Basertilia,Pelle di Girilacco,Pelo di Baku,Pelo di Duriccio,Pelo di Mau,Pelo di Wiggity,Petalo di Hanabira,Petalo di Sanguinaria,Piuma di Birdengold,Polvere di perla,Polvere di Shellusk,Radice di Artemisia,Radice di Valeriana,Radice di Zenzero,Ragno,Rametto di Menta Piperita,Rametto di Valeriana,Sanguisuga,Scaglia di Ninki Nanka,Semino di Papavero,Spina di Duriccio,Spina di Pesce leone,Spina di Rosa,Squama di Aoi Kaeru,Squama di Fiammablu,Succo di Aloe,Succo di Horklump,Testa di Papavero,Torace di Libellula,Uovo di Basertilia,Zanna di Serpente",
+XX: "Ala di Fata,Bava di Ghoul,Bava di Lumaca Carnivora,Bulbo di Bulbo Balzellante,Concime di Menta Tibetana,Foglia di Giaggiolo Puzzolente,Foglia di Menta Tibetana,Formicaleone,Frutto di Giaggiolo Puzzolente,Fungo Saltellante,Germoglio Lamentoso,Melma di Frullobulbo,Muco di Gnomo,Muco di Porlock,Pelo di Porlock,Petalo di Giunchiglia strombazzante,Petalo di Grinzafico,Piuma di Diricawl,Piuma di Jobberknoll,Radigorda,Secrezione di Bundimun,Squama di Chupacabra,Squama di Ippocampo,Squama di Ramora,Stelo di Giunchiglia strombazzante,Sterco di Mooncalf,Succo di Grinzafico,Tentacolo di Frullobulbo,Unghia di Clabbert,Unghia di Gnomo,Uovo di Ippocampo,Uovo di Ramora,Zanna di Chizpurfle",
+XXX: "Aculeo di Knarl,Ala di Doxy,Ala di Pixie,Alga di Loto di Mahoutokoro,Appendice di Purvincolo,Artiglio di Ippogrifo,Cappello di Fungo Scoppiettante,Cenere di Ashwinder,Coda di Malacaw Maculato,Corno di Hodag,Fagiolo Corridore,Fango di Sblorb,Fertilizzante di Arbusto Autofertilizzante,Filo d'erba del Prato Messicano,Fiore di Erbaschiuma,Fiore di Cespuglio Farfallino,Fiore di Cespuglio Spinoso,Fiore di Geranio Zannuto,Foglia di Arbusto Autofertilizzante,Foglia di Bebop Caraibica,Foglia di Cavolo Carnivoro Cinese,Foglia di Cespuglio Farfallino,Germoglio di Bubotubero,Melassa di Glumbumble,Muco di Streeler,Muschio del Sud,Ossigeno di Pianta Magica,Pelle di Moke,Pelo di Doxy,Pelo di orecchie del Pogrebin,Pelo di Puffskein,Pelo di Snaso,Pelo di Sobolan,Petalo di Bebop Caraibica,Petalo di Loto di Mahoutokoro,Petalo di Orchidea Fantasma,Petalo di Pianta Stridula,Pistillo di Loto di Mahoutokoro,Pistillo di Orchidea Fantasma,Piuma di Fwooper,Piuma di Ippogrifo,Puffagiolo,Pungiglione di Billywig,Puzzalinfa di Mimbulus Mimbletonia,Radice di Bebop Caraibica,Radice di Bubotubero,Radice di Orchidea Fantasma,Saliva di Jarvey,Spina di Cespuglio Spinoso,Spina di Shrake,Squama di Plimpi,Squama di Serpente Marino,Unghia di Kneazle,Unghia di Snaso,Uovo di Ashwinder,Uovo di Doxy,Zanna di Geranio Zannuto",
+XXXX: "Acqua di testa di Kappa,Artiglio di Grifone,Artiglio di Matagot,Artiglio di Sfinge,Bacca di Balzar,Cenere di Pianta di Seme di Fuoco,Coda di Erumpent,Corno di Unicorno,Crine di Cavallo Alato,Crine di Thestral,Crine di Unicorno,Dito di Erkling,Estratto di Coccolacea,Estratto di Mandragola,Estratto di Moly,Fiore di Primula Veris,Fiore Fabula,Fluido di Erumpent,Foglia di Coccolacea,Foglia di Mandragola,Fumo di Pianta Fumogena,Guscio di uovo di Occamy,Miele di Primula Veris,Muco di Troll,Pelo di Demiguise,Pelo di Nascondombra,Pelo di Yeti,Petalo di Fiore Floo,Petalo di Moly,Pistillo di Moly,Pistillo di Primula Veris,Piuma di Fenice,Piuma di Grifone,Radice di Mandragola,Stelo di Moly,Zanna di Pianta Vampiro",
+XXXXX: "Algabranchia,Amaralinfa di Amarantacea,Artiglio di Drago,Capello di Ninfa dei Boschi,Capello di Veela,Cenere dell'Albero di Cenere,Corda di cuore di Drago,Corteccia dell'Albero della Vita,Foglia di Amarantacea,Lacrima di Banshee,Radice di Amarantacea,Saliva di Kelpie,Squama di Serpecorno"
+};
+const INGREDIENTI_TIER_PREZZO = {X:1,XX:2,XXX:3,XXXX:5,XXXXX:10};
+const INGREDIENTI_SPECIALI = ["Corno di Bicorno","Corno di Graphorn","Frutto dell'Albero della Vita"];
+
+/* Prezziario unificato per il calcolatore componenti */
+const PREZZIARIO = [];
+Object.keys(POZIONI_PREZZI).forEach(function(n){ PREZZIARIO.push({nome:n, tipo:"Pozione", prezzo:POZIONI_PREZZI[n]}); });
+Object.keys(STRUMENTI_PREZZI).forEach(function(n){ PREZZIARIO.push({nome:n, tipo:"Strumento", prezzo:STRUMENTI_PREZZI[n]}); });
+Object.keys(INGREDIENTI_PER_TIER).forEach(function(tier){
+INGREDIENTI_PER_TIER[tier].split(",").forEach(function(n){
+PREZZIARIO.push({nome:n, tipo:"Ingrediente " + tier, prezzo:INGREDIENTI_TIER_PREZZO[tier]});
+});
+});
+INGREDIENTI_SPECIALI.forEach(function(n){ PREZZIARIO.push({nome:n, tipo:"Ingrediente Speciale", prezzo:200}); });
+PREZZIARIO.sort(function(a,b){ return a.nome.localeCompare(b.nome); });
+
+/* ==========================================================================
+TAB PRINCIPALE
+========================================================================== */
+const tabPaziente = document.getElementById('tab-paziente');
+const tabMedimago = document.getElementById('tab-medimago');
+const viewPaziente = document.getElementById('view-paziente');
+const viewMedimago = document.getElementById('view-medimago');
+let pzStepper = null;
+let mdStepper = null;
+onPress(tabPaziente, function(){
+tabPaziente.classList.add('active');
+tabMedimago.classList.remove('active');
+viewPaziente.classList.remove('hidden');
+viewMedimago.classList.add('hidden');
+if(pzStepper){ pzStepper.refreshCurrent(); }
+});
+onPress(tabMedimago, function(){
+tabMedimago.classList.add('active');
+tabPaziente.classList.remove('active');
+viewMedimago.classList.remove('hidden');
+viewPaziente.classList.add('hidden');
+if(mdStepper){ mdStepper.refreshCurrent(); }
+});
+
+/* ==========================================================================
+REPARTO PAZIENTI — stato
+========================================================================== */
+const pazienteState = {
+scelti: new Set(),
+resistenza: 10,
+metodo: 'sanmungo',
+bgAttivo: false,
+antAttiva: false,
+complicazioni: {}, // id Sintomo -> {esito, classe, testo} — sempre inserite dal Paziente
+componentiAuto: [] // {nome, tipo, prezzo, qta} — lista acquisti per l'Automedicazione
+};
+
+function sintomiScelti(){
+return Array.from(pazienteState.scelti).map(function(id){ return SINTOMI_BY_ID[id]; });
+}
+function costoTotale(scelti){
+return scelti.reduce(function(a,s){ return a + TEMPI[s.c].costo; }, 0);
+}
+function metodoEAttivo(m){ return m === 'sanmungo' || m === 'auto'; }
+function metodoEPassivo(m){ return m === 'spontanea' || m === 'spontanea_bg' || m === 'riposo'; }
+
+function buildPazienteWizard(){
+const root = document.getElementById('view-paziente');
+const steps = [
+{ short:"Sintomi", title:"Quali Sintomi hai?", intro:"Per prima cosa, vediamo quali Sintomi il tuo PG ha contratto. Seleziona tutti quelli presenti, poi premi Avanti.",
+canLeave: function(){
+if(!pazienteState.scelti.size){
+return 'Seleziona almeno un Sintomo prima di continuare.';
+}
+return true;
+} },
+{ short:"Gravita", title:"Qual e la gravita?", intro:"Ecco un riepilogo dei Sintomi selezionati e della Classificazione piu grave tra questi.",
+onShow: renderStepGravita },
+{ short:"Cura", title:"Come ti curi?", intro:"Confronta i metodi di guarigione disponibili e scegline uno.",
+onShow: renderStepMetodo,
+canLeave: function(){
+if(!pazienteState.metodo){
+return 'Scegli un metodo di guarigione dalla tabella prima di continuare.';
+}
+return true;
+} },
+{ short:"Complicazioni", title:"Complicazioni Post-Rimedio", intro:"Il modo in cui si verificano dipende dal metodo di guarigione scelto al passo precedente.",
+onShow: renderStepComplicazioniPaziente },
+{ short:"Riepilogo", title:"Riepilogo Finale", intro:"Ecco il risultato della guarigione.",
+onShow: renderStepFinale },
+];
+const stepper = buildStepper(root, 'pz', steps, 0);
+pzStepper = stepper;
+renderStepSintomi(stepper.bodyId(0));
+}
+
+function renderStepSintomi(bodyId){
+const body = document.getElementById(bodyId);
+body.innerHTML =
+'<div class="field searchbar"><label>Cerca un Sintomo</label>' +
+'<input type="text" id="pz-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div>' +
+'<div class="sym-list" id="pz-symlist"></div>';
+const list = document.getElementById('pz-symlist');
+let html = '';
+CLASSI.forEach(function(c){
+SINTOMI.filter(function(s){ return s.c === c; }).forEach(function(s){
+const checked = pazienteState.scelti.has(s.id);
+html += '<div class="sym-row' + (checked?' checked':'') + '" data-id="' + s.id + '">' +
+'<input type="checkbox" data-id="' + s.id + '"' + (checked?' checked':'') + '>' +
+'<span class="class-badge class-' + c + '">' + c + '</span>' +
+'<span class="nm">' + esc(s.n) + '</span>' +
+'</div>';
+});
+});
+list.innerHTML = html;
+Array.prototype.forEach.call(list.querySelectorAll('.sym-row'), function(row){
+onPress(row, function(ev){
+if(ev.target.tagName !== 'INPUT'){
+const box = row.querySelector('input');
+box.checked = !box.checked;
+}
+const id = row.getAttribute('data-id');
+const box = row.querySelector('input');
+if(box.checked){
+pazienteState.scelti.add(id);
+row.classList.add('checked');
+} else {
+pazienteState.scelti.delete(id);
+row.classList.remove('checked');
+}
+});
+});
+document.getElementById('pz-search').addEventListener('input', function(ev){
+const q = ev.target.value.trim().toLowerCase();
+Array.prototype.forEach.call(list.querySelectorAll('.sym-row'), function(row){
+const txt = row.querySelector('.nm').textContent.toLowerCase();
+row.style.display = (txt.indexOf(q) >= 0) ? '' : 'none';
+});
+});
+}
+
+function renderStepGravita(){
+const body = document.getElementById('pz_body1');
+const scelti = sintomiScelti();
+const cMax = classeMax(scelti.map(function(s){ return s.c; }));
+const grave = isGrave(cMax);
+let rows = '';
+scelti.forEach(function(s){
+rows += '<tr><td>' + esc(s.n) + '</td><td><span class="class-badge class-' + s.c + '">' + s.c + '</span></td>' +
+'<td class="muted">' + esc(s.r) + '</td></tr>';
+});
+body.innerHTML =
+'<div class="kv"><span>Sintomi selezionati</span><b>' + scelti.length + '</b></div>' +
+'<div class="kv"><span>Classificazione piu alta</span><b><span class="class-badge class-' + cMax + '">' + cMax + '</span> — ' +
+(grave ? 'Sintomo Grave: richiede necessariamente una cura' : 'Sintomo Lieve: puo guarire anche da solo') + '</b></div>' +
+'<table class="tidy" style="margin-top:10px"><thead><tr><th>Sintomo</th><th>Classe</th><th>Rimedio ONGame</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+function opzioniCura(scelti, cMax, grave, costoBase){
+const t = TEMPI[cMax];
+const opz = [];
+opz.push({key:'sanmungo', nome:'San Mungo / Infermeria', tipo:'Guarigione Attiva',
+post:t.post, degenza:t.degenza, offgame:'—', costo:Math.floor(costoBase*0.5),
+spiega:'ONGame: il PG viene portato in una struttura attrezzata, un Medimago applica di persona il Rimedio ONGame durante la scena o nei post di Degenza. Si interpreta la cura.',
+nota:'Cura tutti i Sintomi, anche i lievi. Sconto 50% sul totale.'});
+opz.push({key:'auto', nome:'Automedicazione', tipo:'Guarigione Attiva',
+post:t.post, degenza:t.degenza, offgame:'—', costo:0,
+spiega:'ONGame: il PG (o un alleato) si applica da solo il Rimedio ONGame, usando Componenti gia acquistate. Si interpreta la cura, ma senza pagare una struttura.',
+nota:'Nessun costo di cura, ma servono le Componenti gia possedute.'});
+if(!grave){
+opz.push({key:'spontanea', nome:'Guarigione Spontanea, senza cure', tipo:'Guarigione Passiva',
+post:t.post, degenza:t.degenza, offgame:'—', costo:0,
+spiega:'ONGame: nessuno interpreta una cura, il corpo del PG guarisce da solo col passare del tempo. Basta contare i post ONGame indicati, senza scrivere scene di trattamento.',
+nota:'Nessuna cura ricevuta: totalmente gratuita, tempi standard.'});
+opz.push({key:'spontanea_bg', nome:'Guarigione Spontanea, con diagnosi da background', tipo:'Guarigione Passiva',
+post:Math.max(0,t.post-2), degenza:t.degenza, offgame:'—', costo:costoBase,
+spiega:'ONGame: come sopra, ma si dichiara che una diagnosi/trattamento sono gia avvenuti fuori scena (da background, non interpretati per esteso): questo accorcia i post richiesti.',
+nota:'Sconto di 2 post sul totale, ma prezzo pieno.'});
+}
+opz.push({key:'riposo', nome:'Riposo Forzato', tipo:'Guarigione Passiva',
+post:t.post, degenza:t.degenza, offgame:'—', costo:costoBase,
+spiega:'ONGame: il PG e troppo grave per guarire da solo, quindi diagnosi e trattamento da background sono obbligatori anche se non interpretati per esteso. Si contano comunque i post di Degenza.',
+nota: (grave?'Obbligatoria, essendoci un Sintomo Grave. ':'') + 'Diagnosi e trattamento da background obbligatori, nessuno sconto.'});
+opz.push({key:'offgame', nome:'OFFGame standard', tipo:'Guarigione OFFGame',
+post:'—', degenza:'—', offgame:t.offgameMesi + ' mesi', costo:costoBase,
+spiega:'OFFGame: non si interpreta nulla e non si contano post. Semplicemente, trascorso il tempo indicato nel calendario reale del gioco, il PG risulta guarito in automatico.',
+nota:'Guarigione automatica trascorso il tempo indicato, prezzo pieno.'});
+opz.push({key:'offgame_ant', nome:'OFFGame anticipata', tipo:'Guarigione OFFGame',
+post:'—', degenza:'—', offgame:t.offgameMesi + ' mesi (accelerabile per coerenza narrativa)', costo:Math.floor(costoBase*1.1),
+spiega:'OFFGame: come sopra, ma pagando di piu si puo considerare il PG gia guarito prima della scadenza naturale, per esigenze di trama o coerenza col resto della scena.',
+nota:'Costo maggiorato del 10% per l\'anticipo.'});
+return opz;
+}
+
+function renderStepMetodo(){
+const body = document.getElementById('pz_body2');
+const scelti = sintomiScelti();
+const cMax = classeMax(scelti.map(function(s){ return s.c; }));
+const grave = isGrave(cMax);
+const costoBase = costoTotale(scelti);
+const opzioni = opzioniCura(scelti, cMax, grave, costoBase);
+
+const righe = opzioni.map(function(o){
+const selezionata = pazienteState.metodo === o.key;
+return '<tr' + (selezionata ? ' style="background:var(--lieve-bg)"' : '') + '>' +
+'<td><b>' + esc(o.nome) + '</b><br><span class="muted">' + esc(o.tipo) + '</span></td>' +
+'<td>' + o.post + '</td>' +
+'<td>' + esc(o.degenza) + '</td>' +
+'<td>' + esc(o.offgame) + '</td>' +
+'<td><b>' + o.costo + ' G</b></td>' +
+'<td><button type="button" class="btn small ' + (selezionata?'gold':'ghost') + '" data-key="' + o.key + '">' + (selezionata?'Scelto':'Scegli') + '</button></td>' +
+'</tr>' +
+'<tr' + (selezionata ? ' style="background:var(--lieve-bg)"' : '') + '><td colspan="6" style="padding-top:0;padding-bottom:14px"><span class="spiega-inline">' + esc(o.spiega) + '</span></td></tr>';
+}).join('');
+
+body.innerHTML =
+'<p class="note">Confronta tutti i metodi disponibili per i Sintomi selezionati, poi scegline uno per proseguire.</p>' +
+'<div style="overflow-x:auto"><table class="tidy">' +
+'<thead><tr><th>Metodo</th><th>Post richiesti</th><th>Degenza ONGame</th><th>OFFGame</th><th>Costo</th><th></th></tr></thead>' +
+'<tbody>' + righe + '</tbody>' +
+'</table></div>' +
+'<div id="pz-metodo-nota" style="margin-top:14px"></div>';
+
+function selezionaNota(){
+const scelto = opzioni.find(function(o){ return o.key === pazienteState.metodo; });
+const notaBox = document.getElementById('pz-metodo-nota');
+if(!scelto){
+notaBox.innerHTML = '<p class="muted">Nessun metodo ancora scelto: premi "Scegli" su una riga della tabella.</p>';
+return;
+}
+pazienteState._postBase = (scelto.post === '—') ? 0 : scelto.post;
+const totaleComponenti = pazienteState.componentiAuto.reduce(function(a,c){ return a + c.prezzo * c.qta; }, 0);
+pazienteState._costo = (scelto.key === 'auto') ? totaleComponenti : scelto.costo;
+let html = '<div class="result-box ' + (grave?'grave':'ok') + '"><b>' + esc(scelto.nome) + '</b> — ' + esc(scelto.nota) + '</div>';
+if(scelto.key === 'auto'){
+html += '<div class="panel" style="background:#fff;margin-top:14px">' +
+'<h4>Rimedio ONGame per Sintomo</h4>' +
+'<table class="tidy"><thead><tr><th>Sintomo</th><th>Componenti indicate nello specchietto</th></tr></thead><tbody>' +
+scelti.map(function(s){
+return '<tr><td><span class="class-badge class-' + s.c + '">' + s.c + '</span> ' + esc(s.n) + '</td><td class="muted">' + esc(s.r) + '</td></tr>';
+}).join('') +
+'</tbody></table>' +
+'<p class="note">Non tutte le voci del Rimedio ONGame si comprano in Galeoni: gli Incantesimi e le Manovre (Ferula, Nihil Malus, Unio, Recido, Shock, Anapneo, Reinnerva, Obscuro, Legilimens, RCP, Manovra di Valsalva...) bastano da conoscerli; il Dottor Vermicolo, il Puffskein Pulitore e l\'Asticello Istruito sono Creature Magiche addestrate (rispettivamente un Vermicolo, un Puffskein e un Asticello addestrati insieme a un Medimago), quindi si possiedono e si addestrano, non si acquistano al mercato. Cerca sotto solo le Pozioni, gli Ingredienti e gli Strumenti Medimagici che devi ancora comprare.</p>' +
+'<div class="field"><label>Cerca Pozione, Ingrediente o Strumento</label><input type="text" id="auto-cerca" placeholder="Es. Ferula...no aspetta, quello e un incantesimo! Prova Sgonfiotto, Dittamo, Palloncino..." autocomplete="off"></div>' +
+'<div id="auto-suggerimenti" class="sym-list" style="max-height:220px;display:none"></div>' +
+'<div id="auto-lista-acquisti" style="margin-top:12px"></div>' +
+'<div class="result-box" style="margin-top:10px"><div class="kv"><span>Totale da spendere in Componenti</span><b>' + totaleComponenti + ' Galeoni</b></div></div>' +
+'</div>';
+}
+notaBox.innerHTML = html;
+
+if(scelto.key === 'auto'){
+const cercaInput = document.getElementById('auto-cerca');
+const suggBox = document.getElementById('auto-suggerimenti');
+cercaInput.addEventListener('input', function(){
+const q = cercaInput.value.trim().toLowerCase();
+if(q.length < 2){
+suggBox.style.display = 'none';
+suggBox.innerHTML = '';
+return;
+}
+const trovati = PREZZIARIO.filter(function(p){ return p.nome.toLowerCase().indexOf(q) >= 0; }).slice(0, 25);
+if(!trovati.length){
+suggBox.innerHTML = '<div class="sym-row"><span class="nm muted">Nessun risultato</span></div>';
+} else {
+suggBox.innerHTML = trovati.map(function(p){
+return '<div class="sym-row" data-nome="' + esc(p.nome) + '"><span class="nm">' + esc(p.nome) + '</span><span class="pill">' + esc(p.tipo) + '</span><span class="pill">' + p.prezzo + ' G</span></div>';
+}).join('');
+}
+suggBox.style.display = 'block';
+});
+suggBox.addEventListener(EVT_NAME, function(ev){
+const row = ev.target.closest('.sym-row');
+if(!row){ return; }
+const nome = row.getAttribute('data-nome');
+if(!nome){ return; }
+const voce = PREZZIARIO.find(function(p){ return p.nome === nome; });
+const esistente = pazienteState.componentiAuto.find(function(c){ return c.nome === nome; });
+if(esistente){
+esistente.qta += 1;
+} else {
+pazienteState.componentiAuto.push({nome:voce.nome, tipo:voce.tipo, prezzo:voce.prezzo, qta:1});
+}
+cercaInput.value = '';
+suggBox.style.display = 'none';
+suggBox.innerHTML = '';
+selezionaNota();
+});
+
+const listaBox = document.getElementById('auto-lista-acquisti');
+if(!pazienteState.componentiAuto.length){
+listaBox.innerHTML = '<p class="muted">Nessuna Componente ancora aggiunta alla lista acquisti.</p>';
+} else {
+listaBox.innerHTML = pazienteState.componentiAuto.map(function(c, i){
+return '<div class="queue-item">' +
+'<span class="pill">' + esc(c.tipo) + '</span>' +
+'<span>' + esc(c.nome) + '</span>' +
+'<input type="number" min="1" value="' + c.qta + '" data-i="' + i + '" class="auto-qta" style="width:60px">' +
+'<span class="muted">x ' + c.prezzo + ' G = ' + (c.prezzo * c.qta) + ' G</span>' +
+'<span class="x" data-i="' + i + '">×</span>' +
+'</div>';
+}).join('');
+Array.prototype.forEach.call(listaBox.querySelectorAll('.auto-qta'), function(inp){
+inp.addEventListener('input', function(){
+const i = parseInt(inp.getAttribute('data-i'), 10);
+const v = parseInt(inp.value, 10);
+pazienteState.componentiAuto[i].qta = (v > 0) ? v : 1;
+selezionaNota();
+});
+});
+Array.prototype.forEach.call(listaBox.querySelectorAll('.x'), function(x){
+onPress(x, function(){
+pazienteState.componentiAuto.splice(parseInt(x.getAttribute('data-i'), 10), 1);
+selezionaNota();
+});
+});
+}
+}
+}
+
+Array.prototype.forEach.call(body.querySelectorAll('button[data-key]'), function(btn){
+onPress(btn, function(){
+pazienteState.metodo = btn.getAttribute('data-key');
+renderStepMetodo();
+});
+});
+
+selezionaNota();
+}
+
+function renderStepComplicazioniPaziente(){
+const body = document.getElementById('pz_body3');
+const scelti = sintomiScelti();
+const metodo = pazienteState.metodo;
+
+if(metodoEAttivo(metodo)){
+scelti.forEach(function(s){
+if(!pazienteState.complicazioni[s.id]){
+pazienteState.complicazioni[s.id] = {esito: 'ok', classe: s.c, testo: s.x};
+}
+});
+body.innerHTML =
+'<p class="note">Con la Guarigione Attiva la Complicazione e l\'esito negativo del tiro di Terapia/Chirurgia fatto dal Guaritore. Non serve tirare altri dadi qui: chiedi al tuo Guaritore l\'esito di ciascun Sintomo (dal Reparto Medimaghi, passo Cura) e inseriscilo sotto.</p>' +
+'<div id="cmp-manuale-lista"></div>';
+const lista = document.getElementById('cmp-manuale-lista');
+lista.innerHTML = scelti.map(function(s){
+const attuale = pazienteState.complicazioni[s.id];
+let okChecked = true;
+let failChecked = false;
+if(attuale){
+if(attuale.esito === 'fail'){
+okChecked = false;
+failChecked = true;
+}
+}
+return '<div class="panel" style="background:#fff">' +
+'<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+'<span class="class-badge class-' + s.c + '">' + s.c + '</span><b>' + esc(s.n) + '</b>' +
+'</div>' +
+'<label style="margin-right:16px"><input type="radio" name="cmp-esito-' + s.id + '" value="ok"' + (okChecked?' checked':'') + '> Il Guaritore e riuscito (nessuna Complicazione)</label>' +
+'<label><input type="radio" name="cmp-esito-' + s.id + '" value="fail"' + (failChecked?' checked':'') + '> Il Guaritore ha fallito (Complicazione)</label>' +
+'</div>';
+}).join('');
+Array.prototype.forEach.call(lista.querySelectorAll('input[type=radio]'), function(r){
+r.addEventListener('change', function(ev){
+const sid = ev.target.name.replace('cmp-esito-', '');
+const s = SINTOMI_BY_ID[sid];
+pazienteState.complicazioni[sid] = {esito: ev.target.value, classe: s.c, testo: s.x};
+});
+});
+return;
+}
+
+if(metodoEPassivo(metodo)){
+body.innerHTML =
+'<p class="note">Con la Guarigione Passiva nessun Guaritore interviene: prima di iniziare i post di convalescenza, tira 1d15 per ogni Sintomo contro la tua Resistenza, malus inclusi.</p>' +
+'<div class="field" style="max-width:260px"><label>Resistenza del PG, malus inclusi</label><input type="number" id="pz-resistenza" value="' + pazienteState.resistenza + '" min="0" max="15"></div>' +
+'<button type="button" class="btn gold" id="pz-genera-dadi" style="margin-bottom:14px">Genera i dadi delle Complicazioni</button>' +
+'<div id="pz-dadi-lista"></div>';
+document.getElementById('pz-resistenza').addEventListener('input', function(ev){
+pazienteState.resistenza = parseFloat(ev.target.value) || 0;
+});
+onPress(document.getElementById('pz-genera-dadi'), function(){
+const lista = document.getElementById('pz-dadi-lista');
+lista.innerHTML = scelti.map(function(s){
+return '<h4 style="margin-top:16px">' + esc(s.n) + ' <span class="class-badge class-' + s.c + '">' + s.c + '</span></h4>' +
+'<div id="pz-dado-' + s.id + '"></div>';
+}).join('');
+scelti.forEach(function(s){
+renderDiceCheck(document.getElementById('pz-dado-' + s.id), {
+faces: 15,
+addends: [{label:'Resistenza', value: pazienteState.resistenza}],
+successLabel: 'Nessuna Complicazione',
+onConfirm: function(r, esito){
+pazienteState.complicazioni[s.id] = {esito: esito, classe: s.c, testo: s.x};
+}
+});
+});
+});
+return;
+}
+
+body.innerHTML = '<div class="result-box ok">La Guarigione OFFGame non prevede Complicazioni Post-Rimedio: il PG risulta guarito automaticamente trascorso il tempo indicato.</div>';
+}
+
+function renderStepFinale(){
+const body = document.getElementById('pz_body4');
+const scelti = sintomiScelti();
+const cMax = classeMax(scelti.map(function(s){ return s.c; }));
+const grave = isGrave(cMax);
+const t = TEMPI[cMax];
+const metodo = pazienteState.metodo;
+const idScelti = scelti.map(function(s){ return s.id; });
+let extraPost = 0;
+let complicazioniHtml = '';
+
+if(metodo === 'offgame' || metodo === 'offgame_ant'){
+complicazioniHtml = '<p class="muted">Guarigione OFFGame: nessuna Complicazione prevista.</p>';
+} else {
+const registrate = idScelti.filter(function(id){ return pazienteState.complicazioni[id]; }).map(function(id){ return pazienteState.complicazioni[id]; });
+const falliti = registrate.filter(function(x){ return x.esito === 'fail'; });
+if(registrate.length < idScelti.length){
+const mancano = idScelti.length - registrate.length;
+complicazioniHtml = '<p class="muted">Mancano ancora ' + mancano + ' Sintomi senza un esito registrato al passo precedente.</p>';
+}
+if(falliti.length){
+const cPeggiore = classeMax(falliti.map(function(x){ return x.classe; }));
+extraPost = TEMPI[cPeggiore].extra;
+complicazioniHtml += '<div class="result-box grave"><b>Complicazioni sviluppate:</b><ul>' +
+falliti.map(function(x){ return '<li>' + esc(x.testo) + '</li>'; }).join('') +
+'</ul>Post extra aggiunti in base alla Complicazione piu grave: <b>' + extraPost + '</b></div>';
+} else if(registrate.length){
+complicazioniHtml += '<div class="result-box ok">Nessuna Complicazione sviluppata.</div>';
+}
+}
+
+const postFinali = (pazienteState._postBase || t.post) + extraPost;
+const costo = pazienteState._costo || 0;
+const opzioniLabel = opzioniCura(scelti, cMax, grave, costoTotale(scelti));
+const metodoScelto = opzioniLabel.find(function(o){ return o.key === metodo; });
+const nomeMetodo = metodoScelto ? metodoScelto.nome : metodo;
+
+let spesaHtml = '';
+if(costo > 0){
+spesaHtml =
+'<div class="panel" style="background:#fff;margin-top:14px">' +
+'<h4>Ricorda di segnalarlo nella Lista della Spesa</h4>' +
+'<p class="muted">Questo pagamento va registrato specificando la role in cui il PG ha subito la perdita di Salute, il metodo di guarigione scelto e il prezzo pagato.</p>' +
+'<div class="field"><label>Nome o link della role</label><input type="text" id="spesa-role" placeholder="Es. Un brutto incontro nella Foresta Proibita"></div>' +
+'<div class="dice-tag" id="spesa-riga"></div>' +
+'<button type="button" class="btn small gold" id="spesa-copia">Copia la riga</button>' +
+'</div>';
+}
+
+body.innerHTML =
+complicazioniHtml +
+'<div class="result-box" style="margin-top:14px">' +
+'<div class="kv"><span>Post totali di Guarigione Passiva</span><b>' + postFinali + ' post</b></div>' +
+'<div class="kv"><span>Degenza/Convalescenza ONGame</span><b>' + t.degenza + '</b></div>' +
+'<div class="kv"><span>Guarigione OFFGame automatica dopo</span><b>' + t.offgameMesi + ' mesi</b></div>' +
+'<div class="kv"><span>Costo delle cure</span><b>' + costo + ' Galeoni</b></div>' +
+'</div>' +
+spesaHtml;
+
+if(costo > 0){
+function aggiornaRigaSpesa(){
+const role = document.getElementById('spesa-role').value.trim();
+const roleTesto = role.length ? role : '[nome o link della role]';
+document.getElementById('spesa-riga').textContent =
+roleTesto + ' — ' + nomeMetodo + ' — ' + costo + ' Galeoni';
+}
+document.getElementById('spesa-role').addEventListener('input', aggiornaRigaSpesa);
+onPress(document.getElementById('spesa-copia'), function(){
+copyText(document.getElementById('spesa-riga').textContent, document.getElementById('spesa-copia'));
+});
+aggiornaRigaSpesa();
+}
+}
+
+/* ==========================================================================
+REPARTO MEDIMAGHI — stato
+========================================================================== */
+const medimagoState = {
+guaritori: [], // {id, nome, tecnica, livDiagnosta, livTerapista, livChirurgo, sap25diag, sap25ter, sap25chi, fatica, esiti:[]}
+coda: [], // {sid, guaritoreId, pozione, selfcure} — Terapia/Chirurgia
+causaNota: false,
+sintomiIndividuati: new Set() // Sintomi segnati nel passo Diagnosi, pronti da riversare in Cura
+};
+let guaritoreCounter = 0;
+
+function buildMedimagoWizard(){
+const root = document.getElementById('view-medimago');
+const steps = [
+{ short:"Guaritori", title:"Chi sta curando?", intro:"Aggiungi uno o piu PG Medimago che partecipano a questa cura. Ognuno mantiene le proprie statistiche e la propria Fatica in modo indipendente.",
+onShow: renderStepGuaritori,
+canLeave: function(){
+if(!medimagoState.guaritori.length){
+return 'Aggiungi almeno un Guaritore prima di continuare (attualmente registrati: ' + medimagoState.guaritori.length + ').';
+}
+return true;
+} },
+{ short:"Diagnosi", title:"Diagnosi", intro:"Seleziona le Classificazioni presenti nel paziente e scegli quale Guaritore tenta di riconoscerle. Copia ciascun dado, lancialo sul forum e scrivi qui il risultato.",
+onShow: renderStepDiagnosi },
+{ short:"Cura", title:"Terapia e Chirurgia", intro:"Aggiungi qui, uno alla volta, i Sintomi da trattare. Il tool sceglie da solo tra Terapia (X-XXX) e Chirurgia (XXXX-XXXXX) e lancia un dado per ciascun Sintomo. Comunica poi al Paziente l'esito di ogni tiro: gli servira per registrare le eventuali Complicazioni Post-Rimedio nel proprio reparto.",
+onShow: renderStepCura },
+{ short:"Riepilogo", title:"Riepilogo", intro:"Ecco la Fatica spesa da ciascun Guaritore e l'esito di ogni Sintomo trattato.",
+onShow: renderStepRiepilogo },
+];
+const stepper = buildStepper(root, 'md', steps, 0);
+mdStepper = stepper;
+}
+
+const VOTI = [{v:"T",base:5},{v:"D",base:6},{v:"S",base:7},{v:"A",base:8},{v:"O",base:9},{v:"E",base:10}];
+const ROMANI = ["I","II","III","IV","V"];
+
+function prepBlockTipoPG(){
+return '<div class="prep-block" style="background:#fff">' +
+'<div class="prep-title">Stato del PG</div>' +
+'<div class="seg" id="g-tipo-seg" style="max-width:340px">' +
+'<label class="on" data-val="studente"><input type="radio" name="g-tipo" value="studente" checked>Studente (voto)</label>' +
+'<label data-val="adulto"><input type="radio" name="g-tipo" value="adulto">Adulto</label>' +
+'</div>' +
+'<p class="muted" style="margin:8px 0 0">Vale per tutta la scheda: sotto scegli solo il voto o il Livello di Conoscenza Avanzata per ciascuna materia.</p>' +
+'</div>';
+}
+
+function prepBlockSkill(prefix, titolo){
+const votiOpt = VOTI.map(function(o){ return '<option value="' + o.v + '">Voto ' + o.v + '</option>'; }).join('');
+const livOpt = ROMANI.map(function(r,i){ return '<option value="' + (i+1) + '">Livello ' + r + '</option>'; }).join('');
+return '<div class="prep-block" id="' + prefix + '-block">' +
+'<div class="prep-title">' + esc(titolo) + '</div>' +
+'<div id="' + prefix + '-studente">' +
+'<div class="field" style="max-width:220px"><label>Voto ottenuto</label><select id="' + prefix + '-voto">' + votiOpt + '</select></div>' +
+'</div>' +
+'<div id="' + prefix + '-adulto" class="hidden">' +
+'<label><input type="checkbox" id="' + prefix + '-ha-ca"> Possiede la Conoscenza Avanzata</label>' +
+'<div id="' + prefix + '-ca-liv" class="hidden field" style="max-width:220px;margin-top:8px"><label>Livello della Conoscenza Avanzata</label><select id="' + prefix + '-liv-ca">' + livOpt + '</select></div>' +
+'</div>' +
+'<div class="prep-preview" id="' + prefix + '-preview"></div>' +
+'</div>';
+}
+
+function prepBlockChirurgia(){
+const livOpt = ROMANI.map(function(r,i){ return '<option value="' + (i+1) + '">Livello ' + r + '</option>'; }).join('');
+return '<div class="prep-block" id="chi-block">' +
+'<div class="prep-title">Preparazione in Chirurgia</div>' +
+'<div class="field" style="max-width:220px"><label>Punti in Sapienza Medimagica</label><input type="number" id="chi-sap" value="0" min="0"></div>' +
+'<label><input type="checkbox" id="chi-ha-ca"> Possiede la Conoscenza Avanzata da Chirurgo</label>' +
+'<div id="chi-ca-liv" class="hidden field" style="max-width:220px;margin-top:8px"><label>Livello di Chirurgo</label><select id="chi-liv-ca">' + livOpt + '</select></div>' +
+'<div class="prep-preview" id="chi-preview"></div>' +
+'</div>';
+}
+
+function wireTipoPG(prefissi){
+const seg = document.getElementById('g-tipo-seg');
+function aggiornaTutto(){
+Array.prototype.forEach.call(seg.querySelectorAll('label'), function(l){
+const on = l.querySelector('input').checked;
+if(on){ l.classList.add('on'); } else { l.classList.remove('on'); }
+});
+const tipo = seg.querySelector('input:checked').value;
+prefissi.forEach(function(prefix){
+const studenteDiv = document.getElementById(prefix + '-studente');
+const adultoDiv = document.getElementById(prefix + '-adulto');
+if(tipo === 'studente'){
+studenteDiv.classList.remove('hidden');
+adultoDiv.classList.add('hidden');
+} else {
+studenteDiv.classList.add('hidden');
+adultoDiv.classList.remove('hidden');
+}
+aggiornaPreviewSkill(prefix);
+});
+}
+Array.prototype.forEach.call(seg.querySelectorAll('input'), function(r){
+r.addEventListener('change', aggiornaTutto);
+});
+aggiornaTutto();
+}
+
+function aggiornaPreviewSkill(prefix){
+const r = readPrepBlock(prefix);
+const el = document.getElementById(prefix + '-preview');
+if(el){ el.textContent = 'Valore di base usato nei tiri: ' + r.base + ' — ' + r.label; }
+}
+
+function wirePrepSkill(prefix){
+const haCa = document.getElementById(prefix + '-ha-ca');
+const caLivDiv = document.getElementById(prefix + '-ca-liv');
+haCa.addEventListener('change', function(){
+if(haCa.checked){ caLivDiv.classList.remove('hidden'); } else { caLivDiv.classList.add('hidden'); }
+aggiornaPreviewSkill(prefix);
+});
+document.getElementById(prefix + '-voto').addEventListener('change', function(){ aggiornaPreviewSkill(prefix); });
+document.getElementById(prefix + '-liv-ca').addEventListener('change', function(){ aggiornaPreviewSkill(prefix); });
+}
+
+function wirePrepChirurgia(){
+const haCa = document.getElementById('chi-ha-ca');
+const caLivDiv = document.getElementById('chi-ca-liv');
+const sap = document.getElementById('chi-sap');
+haCa.addEventListener('change', function(){
+if(haCa.checked){ caLivDiv.classList.remove('hidden'); } else { caLivDiv.classList.add('hidden'); }
+aggiornaPreview();
+});
+sap.addEventListener('input', aggiornaPreview);
+document.getElementById('chi-liv-ca').addEventListener('change', aggiornaPreview);
+function aggiornaPreview(){
+const r = readPrepChirurgia();
+const out = document.getElementById('chi-preview');
+if(r.base === null){
+out.textContent = 'Con questi dati il Guaritore non puo tentare la Chirurgia (nessuna Sapienza Medimagica ne Conoscenza Avanzata da Chirurgo).';
+} else {
+out.textContent = 'Valore di base usato nei tiri: ' + r.base + ' — ' + r.label;
+}
+}
+aggiornaPreview();
+}
+
+function readPrepBlock(prefix){
+const tipo = document.querySelector('input[name="g-tipo"]:checked').value;
+if(tipo === 'studente'){
+const voto = document.getElementById(prefix + '-voto').value;
+const o = VOTI.find(function(x){ return x.v === voto; });
+return {base: o.base, label: 'Studente, voto ' + voto};
+}
+const haCa = document.getElementById(prefix + '-ha-ca').checked;
+if(haCa){
+const liv = parseInt(document.getElementById(prefix + '-liv-ca').value, 10);
+return {base: 11 + liv, label: 'Adulto con Conoscenza Avanzata Livello ' + ROMANI[liv-1]};
+}
+return {base: 11, label: 'Adulto senza Conoscenza Avanzata'};
+}
+
+function readPrepChirurgia(){
+const haCa = document.getElementById('chi-ha-ca').checked;
+if(haCa){
+const liv = parseInt(document.getElementById('chi-liv-ca').value, 10);
+return {base: 6 + liv, label: 'Chirurgo Livello ' + ROMANI[liv-1]};
+}
+const sap = parseFloat(document.getElementById('chi-sap').value) || 0;
+if(sap <= 0){ return {base: null, label: 'Nessuna Sapienza Medimagica ne Chirurgo'}; }
+if(sap <= 5){ return {base: 4, label: 'Sapienza Medimagica 1-5, senza Chirurgo'}; }
+if(sap <= 10){ return {base: 5, label: 'Sapienza Medimagica 6-10, senza Chirurgo'}; }
+return {base: 6, label: 'Sapienza Medimagica 11 o piu, senza Chirurgo'};
+}
+
+function renderStepGuaritori(){
+const body = document.getElementById('md_body0');
+body.innerHTML =
+'<div class="panel" style="background:#fff">' +
+'<div class="grid2">' +
+'<div class="field"><label>Nome del PG</label><input type="text" id="g-nome" placeholder="Es. Mira Ashwood"></div>' +
+'<div class="field"><label>Tecnica (totale)</label><input type="number" id="g-tecnica" value="0"></div>' +
+'</div>' +
+prepBlockTipoPG() +
+prepBlockSkill('gd', 'Preparazione in Diagnosi') +
+'<label><input type="checkbox" id="g-sap-diag"> Sapienza Medimagica 25 (0 Fatica in Diagnosi)</label>' +
+prepBlockSkill('gt', 'Preparazione in Terapia') +
+'<label><input type="checkbox" id="g-sap-ter"> Sapienza Medimagica 25 (0 Fatica in Terapia)</label>' +
+prepBlockChirurgia() +
+'<label><input type="checkbox" id="g-sap-chi"> Sapienza Medimagica 25 (0 Fatica in Chirurgia)</label>' +
+'<div style="margin-top:14px"><button type="button" class="btn gold" id="g-add">Conferma Guaritore</button></div>' +
+'</div>' +
+'<div id="g-lista" style="margin-top:16px"></div>';
+
+wirePrepSkill('gd');
+wirePrepSkill('gt');
+wireTipoPG(['gd', 'gt']);
+wirePrepChirurgia();
+
+onPress(document.getElementById('g-add'), function(){
+try{
+guaritoreCounter += 1;
+const nomeVal = document.getElementById('g-nome').value.trim();
+const diag = readPrepBlock('gd');
+const ter = readPrepBlock('gt');
+const chi = readPrepChirurgia();
+medimagoState.guaritori.push({
+id: 'g' + guaritoreCounter,
+nome: nomeVal.length ? nomeVal : ('Guaritore ' + guaritoreCounter),
+tecnica: parseFloat(document.getElementById('g-tecnica').value) || 0,
+diagBase: diag.base, diagLabel: diag.label,
+terBase: ter.base, terLabel: ter.label,
+chiBase: chi.base, chiLabel: chi.label,
+sap25diag: document.getElementById('g-sap-diag').checked,
+sap25ter: document.getElementById('g-sap-ter').checked,
+sap25chi: document.getElementById('g-sap-chi').checked,
+fatica: 0,
+esiti: []
+});
+document.getElementById('g-nome').value = '';
+renderListaGuaritori();
+} catch(errore){
+const wrap = document.getElementById('g-lista');
+if(wrap){
+wrap.innerHTML = '<p class="fail">Si e verificato un problema nell\'aggiunta (' + esc(String(errore.message || errore)) + '). Ricarica la pagina e riprova; se persiste, segnalalo cosi posso correggerlo.</p>' + wrap.innerHTML;
+}
+}
+});
+
+renderListaGuaritori();
+}
+
+function renderListaGuaritori(){
+const wrap = document.getElementById('g-lista');
+if(!wrap){ return; }
+const contatore = '<p class="muted" style="font-family:\'Courier New\',monospace">Guaritori aggiunti finora: <b>' + medimagoState.guaritori.length + '</b></p>';
+if(!medimagoState.guaritori.length){
+wrap.innerHTML = contatore + '<p class="muted">Nessun Guaritore aggiunto ancora.</p>';
+return;
+}
+wrap.innerHTML = contatore + medimagoState.guaritori.map(function(g, i){
+return '<div class="guaritore-card">' +
+'<span class="nome">' + esc(g.nome) + '</span>' +
+'<span class="stat">Tecnica ' + g.tecnica + ' — Diagnosi: ' + esc(g.diagLabel) + '</span>' +
+'<span class="stat">Terapia: ' + esc(g.terLabel) + '</span>' +
+'<span class="stat">Chirurgia: ' + esc(g.chiLabel) + '</span>' +
+'<span class="x" data-i="' + i + '">×</span>' +
+'</div>';
+}).join('');
+Array.prototype.forEach.call(wrap.querySelectorAll('.x'), function(x){
+onPress(x, function(){
+medimagoState.guaritori.splice(parseInt(x.getAttribute('data-i'), 10), 1);
+renderListaGuaritori();
+});
+});
+}
+
+function selectGuaritoriOptions(selectedId){
+return medimagoState.guaritori.map(function(g){
+return '<option value="' + g.id + '"' + (g.id===selectedId?' selected':'') + '>' + esc(g.nome) + '</option>';
+}).join('');
+}
+
+/* Con un solo Guaritore in lista non ha senso mostrare un menu a tendina:
+si assegna in automatico e si mostra solo il nome in chiaro. */
+function guaritoreChooserSingle(id){
+if(medimagoState.guaritori.length === 1){
+const g = medimagoState.guaritori[0];
+return '<div class="field" style="max-width:300px"><label>Guaritore incaricato</label>' +
+'<div class="pill" style="display:inline-flex;padding:9px 14px">' + esc(g.nome) + '</div>' +
+'<input type="hidden" id="' + id + '" value="' + g.id + '"></div>';
+}
+return '<div class="field" style="max-width:300px"><label>Guaritore incaricato</label><select id="' + id + '">' + selectGuaritoriOptions() + '</select></div>';
+}
+function guaritoreChooserRepeatable(cssClass, dataAttr, dataVal){
+if(medimagoState.guaritori.length === 1){
+const g = medimagoState.guaritori[0];
+return '<div class="field" style="max-width:300px"><label>Guaritore incaricato</label>' +
+'<div class="pill" style="display:inline-flex;padding:9px 14px">' + esc(g.nome) + '</div>' +
+'<input type="hidden" class="' + cssClass + '" data-' + dataAttr + '="' + dataVal + '" value="' + g.id + '"></div>';
+}
+return '<div class="field" style="max-width:300px"><label>Guaritore incaricato</label><select class="' + cssClass + '" data-' + dataAttr + '="' + dataVal + '">' + selectGuaritoriOptions() + '</select></div>';
+}
+
+function renderStepDiagnosi(){
+const body = document.getElementById('md_body1');
+if(!medimagoState.guaritori.length){
+body.innerHTML = '<p class="muted">Torna al passo precedente e aggiungi almeno un Guaritore.</p>';
+return;
+}
+let checks = '';
+CLASSI.forEach(function(c){
+checks += '<label class="pill" style="margin-right:8px;margin-bottom:8px;display:inline-flex">' +
+'<input type="checkbox" class="diag-classe" value="' + c + '" style="margin-right:6px"> ' + c + '</label>';
+});
+body.innerHTML =
+'<div style="margin:0 0 10px">' + checks + '</div>' +
+'<label><input type="checkbox" id="diag-nota"' + (medimagoState.causaNota?' checked':'') + '> La causa e gia nota al Guaritore o al Malato (+3 alla somma per ogni dado)</label>' +
+'<div id="diag-righe" style="margin-top:14px"></div>' +
+'<button type="button" class="btn gold" id="diag-genera" style="margin-top:8px">Genera le righe di Diagnosi</button>' +
+'<div id="diag-dadi"></div>' +
+'<div class="panel" style="background:#fff;margin-top:20px">' +
+'<h4>Sintomi individuati</h4>' +
+'<p class="muted">Segna qui tutti i Sintomi che sai o hai scoperto, cosi li ritrovi gia pronti nel passo Cura senza doverli reinserire uno per uno.</p>' +
+'<div class="field searchbar"><label>Cerca un Sintomo</label><input type="text" id="diag-ind-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div>' +
+'<div class="sym-list" id="diag-ind-lista" style="max-height:260px"></div>' +
+'</div>';
+
+const listaInd = document.getElementById('diag-ind-lista');
+let listaIndHtml = '';
+CLASSI.forEach(function(c){
+SINTOMI.filter(function(s){ return s.c === c; }).forEach(function(s){
+const checked = medimagoState.sintomiIndividuati.has(s.id);
+listaIndHtml += '<div class="sym-row' + (checked?' checked':'') + '" data-id="' + s.id + '">' +
+'<input type="checkbox" data-id="' + s.id + '"' + (checked?' checked':'') + '>' +
+'<span class="class-badge class-' + c + '">' + c + '</span>' +
+'<span class="nm">' + esc(s.n) + '</span>' +
+'</div>';
+});
+});
+listaInd.innerHTML = listaIndHtml;
+Array.prototype.forEach.call(listaInd.querySelectorAll('.sym-row'), function(row){
+onPress(row, function(ev){
+if(ev.target.tagName !== 'INPUT'){
+const box = row.querySelector('input');
+box.checked = !box.checked;
+}
+const id = row.getAttribute('data-id');
+const box = row.querySelector('input');
+if(box.checked){
+medimagoState.sintomiIndividuati.add(id);
+row.classList.add('checked');
+} else {
+medimagoState.sintomiIndividuati.delete(id);
+row.classList.remove('checked');
+}
+});
+});
+document.getElementById('diag-ind-search').addEventListener('input', function(ev){
+const q = ev.target.value.trim().toLowerCase();
+Array.prototype.forEach.call(listaInd.querySelectorAll('.sym-row'), function(row){
+const txt = row.querySelector('.nm').textContent.toLowerCase();
+row.style.display = (txt.indexOf(q) >= 0) ? '' : 'none';
+});
+});
+
+document.getElementById('diag-nota').addEventListener('change', function(ev){ medimagoState.causaNota = ev.target.checked; });
+
+onPress(document.getElementById('diag-genera'), function(){
+const classiSel = Array.prototype.map.call(body.querySelectorAll('.diag-classe:checked'), function(c){ return c.value; });
+if(!classiSel.length){
+document.getElementById('diag-dadi').innerHTML = '<p class="muted">Seleziona almeno una Classificazione.</p>';
+return;
+}
+const dadi = document.getElementById('diag-dadi');
+dadi.innerHTML = classiSel.map(function(c){
+return '<div class="panel" style="background:#fff">' +
+'<h4><span class="class-badge class-' + c + '">' + c + '</span> Diagnosi</h4>' +
+'<label><input type="checkbox" class="diag-gia-noto" data-classe="' + c + '"> I Sintomi di questa Classificazione sono gia noti (un altro Guaritore li ha gia riconosciuti, o il Narratore li ha comunicati direttamente): salta il tiro</label>' +
+'<div class="diag-blocco-tiro" id="diag-blocco-' + c + '">' +
+guaritoreChooserRepeatable('diag-guaritore', 'classe', c) +
+'<label><input type="checkbox" class="diag-self" data-classe="' + c + '"> Il Guaritore diagnostica se stesso (-20% sulla somma)</label>' +
+'<div id="diag-out-' + c + '" style="margin-top:10px"></div>' +
+'<button type="button" class="btn small ghost diag-calcola" data-classe="' + c + '" style="margin-top:6px">Calcola il dado di Diagnosi</button>' +
+'</div>' +
+'</div>';
+}).join('');
+
+Array.prototype.forEach.call(dadi.querySelectorAll('.diag-gia-noto'), function(chk){
+chk.addEventListener('change', function(){
+const c = chk.getAttribute('data-classe');
+const blocco = document.getElementById('diag-blocco-' + c);
+const notaBox = document.getElementById('diag-noto-nota-' + c);
+if(chk.checked){
+blocco.classList.add('hidden');
+if(!notaBox){
+const div = document.createElement('div');
+div.id = 'diag-noto-nota-' + c;
+div.className = 'result-box ok';
+div.style.marginTop = '8px';
+div.textContent = 'Sintomi di Classificazione ' + c + ' considerati riconosciuti: nessun tiro necessario.';
+blocco.parentNode.insertBefore(div, blocco);
+}
+} else {
+blocco.classList.remove('hidden');
+if(notaBox){ notaBox.remove(); }
+}
+});
+});
+
+Array.prototype.forEach.call(dadi.querySelectorAll('.diag-calcola'), function(btn){
+onPress(btn, function(){
+const c = btn.getAttribute('data-classe');
+const gSel = dadi.querySelector('.diag-guaritore[data-classe="' + c + '"]');
+const selfEl = dadi.querySelector('.diag-self[data-classe="' + c + '"]');
+const g = medimagoState.guaritori.find(function(x){ return x.id === gSel.value; });
+eseguiTentativoDiagnosi(g, c);
+});
+});
+});
+}
+
+function livelloDiagnostaPosseduto(g){
+if(g.diagBase > 11){ return g.diagBase - 11; }
+return 0;
+}
+
+function eseguiTentativoDiagnosi(g, c){
+const dadi = document.getElementById('diag-dadi');
+const selfEl = dadi.querySelector('.diag-self[data-classe="' + c + '"]');
+const base = g.diagBase;
+const addends = [
+{label: 'Tecnica', value: g.tecnica},
+{label: g.diagLabel, value: base},
+{label: 'Classificazione ' + c, value: DIAGNOSI_BONUS[c]}
+];
+if(medimagoState.causaNota){
+addends.push({label:'Causa gia nota', value: 3});
+}
+if(selfEl.checked){
+const grezzo = addends.reduce(function(s,a){ return s + a.value; }, 0);
+const ridotto = Math.floor(grezzo * 0.8);
+addends.push({label:'Malus Auto-diagnosi -20%', value: ridotto - grezzo});
+}
+const out = document.getElementById('diag-out-' + c);
+const ravvedimento = document.getElementById('diag-ravv-' + c);
+if(ravvedimento){ ravvedimento.innerHTML = ''; }
+let entryRef = null;
+renderDiceCheck(out, {
+faces: 40,
+addends: addends,
+successLabel: 'Riesce a riconoscere i Sintomi ' + c,
+onConfirm: function(r, esito, totale, isCorrection){
+if(!isCorrection){
+const costo = g.sap25diag ? 0 : -2;
+g.fatica += costo;
+entryRef = {tipo:'Diagnosi', classe:c, esito:esito, fatica:costo};
+g.esiti.push(entryRef);
+} else {
+entryRef.esito = esito;
+}
+renderStepRiepilogo();
+const ravvBox = document.getElementById('diag-ravv-' + c);
+if(esito === 'fail'){
+mostraRavvedimento(g, c);
+} else if(ravvBox){
+ravvBox.innerHTML = '';
+}
+}
+});
+}
+
+function mostraRavvedimento(g, c){
+const dadi = document.getElementById('diag-dadi');
+let ravv = document.getElementById('diag-ravv-' + c);
+if(!ravv){
+const blocco = dadi.querySelector('.diag-calcola[data-classe="' + c + '"]').closest('.panel');
+const div = document.createElement('div');
+div.id = 'diag-ravv-' + c;
+div.style.marginTop = '10px';
+blocco.appendChild(div);
+ravv = div;
+}
+if(ravv.innerHTML){ return; }
+const livello = livelloDiagnostaPosseduto(g);
+ravv.innerHTML =
+'<div class="note">Il Guaritore puo accorgersi di non aver individuato tutti i Sintomi e ritentare, una volta per post della stessa role di cura.</div>' +
+'<div id="diag-ravv-dado-' + c + '"></div>';
+renderDiceCheck(document.getElementById('diag-ravv-dado-' + c), {
+faces: 30,
+addends: [
+{label:'Tecnica', value: g.tecnica},
+{label:'Livello di Diagnosta posseduto', value: livello}
+],
+successLabel: 'Il Guaritore si accorge dell\'errore e puo ritentare',
+onConfirm: function(r, esitoRavv){
+const zonaRitenta = document.getElementById('diag-ravv-dado-' + c);
+const vecchioExtra = zonaRitenta.querySelector('.ravv-extra');
+if(vecchioExtra){ vecchioExtra.remove(); }
+const extra = document.createElement('div');
+extra.className = 'ravv-extra';
+if(esitoRavv === 'fail'){
+extra.innerHTML = '<p class="muted">Non se ne accorge questo post: puo riprovare al post successivo della stessa role di cura.</p>';
+} else {
+const btnRitenta = document.createElement('button');
+btnRitenta.type = 'button';
+btnRitenta.className = 'btn small gold';
+btnRitenta.style.marginTop = '8px';
+btnRitenta.textContent = 'Ritenta la Diagnosi per ' + c;
+onPress(btnRitenta, function(){ eseguiTentativoDiagnosi(g, c); });
+extra.appendChild(btnRitenta);
+}
+zonaRitenta.appendChild(extra);
+}
+});
+}
+
+let curaItemCounter = 0;
+
+function calcolaDadoCura(sid, guaritoreId, pozione, selfcure){
+const s = SINTOMI_BY_ID[sid];
+const grave = isGrave(s.c);
+const g = medimagoState.guaritori.find(function(x){ return x.id === guaritoreId; });
+const potBonus = pozione === 'oop' ? 1 : (pozione === 'ecc' ? 2 : 0);
+if(grave){
+const base = g.chiBase;
+if(base === null){
+return {s:s, g:g, grave:grave, forceFail:true,
+failText: g.nome + ' non possiede Sapienza Medimagica ne Conoscenza Avanzata da Chirurgo: non puo tentare la Chirurgia su questo Sintomo.'};
+}
+const addends = [
+{label:'Tecnica', value: g.tecnica},
+{label: g.chiLabel, value: base},
+{label:'Classificazione ' + s.c, value: CHIRURGIA_BONUS[s.c]}
+];
+if(potBonus){ addends.push({label: pozione==='oop' ? 'Pozione Oltre Ogni Previsione' : 'Pozione Eccezionale', value: potBonus}); }
+if(selfcure){
+const grezzo = addends.reduce(function(s2,a){ return s2 + a.value; }, 0);
+const ridotto = Math.floor(grezzo * 0.6);
+addends.push({label:'Malus Auto-cura -40%', value: ridotto - grezzo});
+}
+return {s:s, g:g, grave:grave, faces:35, addends:addends, successLabel:'Cura con successo ' + s.n};
+}
+const base = g.terBase;
+const addends = [
+{label:'Tecnica', value: g.tecnica},
+{label: g.terLabel, value: base},
+{label:'Classificazione ' + s.c, value: TERAPIA_BONUS[s.c]}
+];
+if(potBonus){ addends.push({label: pozione==='oop' ? 'Pozione Oltre Ogni Previsione' : 'Pozione Eccezionale', value: potBonus}); }
+if(selfcure){
+const grezzo = addends.reduce(function(s2,a){ return s2 + a.value; }, 0);
+const ridotto = Math.floor(grezzo * 0.7);
+addends.push({label:'Malus Auto-cura -30%', value: ridotto - grezzo});
+}
+return {s:s, g:g, grave:grave, faces:40, addends:addends, successLabel:'Cura con successo ' + s.n};
+}
+
+function renderStepCura(){
+const body = document.getElementById('md_body2');
+if(!medimagoState.guaritori.length){
+body.innerHTML = '<p class="muted">Torna al primo passo e aggiungi almeno un Guaritore.</p>';
+return;
+}
+const opzioniSintomi = SINTOMI.map(function(s){ return '<option value="' + s.id + '">' + esc(s.n) + ' (' + s.c + ')</option>'; }).join('');
+const opzioniIndividuati = Array.from(medimagoState.sintomiIndividuati || []);
+let bulkHtml;
+if(opzioniIndividuati.length){
+bulkHtml = '<div class="panel" style="background:#fff">' +
+'<h4>Sintomi individuati in Diagnosi</h4>' +
+'<p class="muted">Nel passo Diagnosi hai segnato ' + opzioniIndividuati.length + ' Sintomi.</p>' +
+'<button type="button" class="btn small gold" id="cura-bulk">Aggiungili tutti alla lista qui sotto</button>' +
+'</div>';
+} else {
+bulkHtml = '<div class="panel" style="background:#fff">' +
+'<h4>Sintomi individuati in Diagnosi</h4>' +
+'<p class="muted">Non hai ancora segnato nessun Sintomo nel passo Diagnosi. Puoi comunque aggiungerli uno per uno qui sotto.</p>' +
+'</div>';
+}
+body.innerHTML =
+bulkHtml +
+'<h4 style="margin-top:20px">Sintomi gia aggiunti</h4>' +
+'<div id="cura-coda"></div>' +
+'<button type="button" class="btn ghost" id="cura-toggle-form" style="margin-top:20px">+ Nuovo Sintomo da curare</button>' +
+'<div id="cura-form-wrap" class="hidden" style="margin-top:14px">' +
+'<div class="grid3">' +
+'<div class="field" style="grid-column:1/3"><label>Sintomo</label><select id="cura-sel">' + opzioniSintomi + '</select></div>' +
+'</div>' +
+guaritoreChooserSingle('cura-guaritore') +
+'<div class="grid2">' +
+'<div class="field"><label>Pozione usata</label><select id="cura-pozione">' +
+'<option value="no">Nessuna / standard</option><option value="oop">Oltre Ogni Previsione, +1</option><option value="ecc">Eccezionale, +2</option>' +
+'</select></div>' +
+'<label style="align-self:center"><input type="checkbox" id="cura-selfcure"> Il Guaritore cura se stesso su questo Sintomo</label>' +
+'</div>' +
+'<div id="cura-anteprima" style="margin:12px 0"></div>' +
+'<div><button type="button" class="btn gold" id="cura-add">Aggiungi un altro Sintomo da curare</button></div>' +
+'</div>';
+
+onPress(document.getElementById('cura-toggle-form'), function(){
+const wrapForm = document.getElementById('cura-form-wrap');
+const btn = document.getElementById('cura-toggle-form');
+if(wrapForm.classList.contains('hidden')){
+wrapForm.classList.remove('hidden');
+btn.textContent = '− Nascondi il modulo';
+} else {
+wrapForm.classList.add('hidden');
+btn.textContent = '+ Nuovo Sintomo da curare';
+}
+});
+
+const wrap = document.getElementById('cura-coda');
+if(!medimagoState.coda.length){
+wrap.innerHTML = '<p class="muted" id="cura-coda-vuota">Nessun Sintomo aggiunto ancora.</p>';
+} else {
+medimagoState.coda.forEach(function(item){ aggiungiCardCura(item); });
+}
+
+function aggiornaAnteprima(){
+const sid = document.getElementById('cura-sel').value;
+const guaritoreId = document.getElementById('cura-guaritore').value;
+const pozione = document.getElementById('cura-pozione').value;
+const selfcure = document.getElementById('cura-selfcure').checked;
+const info = calcolaDadoCura(sid, guaritoreId, pozione, selfcure);
+const box = document.getElementById('cura-anteprima');
+box.innerHTML = '<p class="muted" style="margin-bottom:6px">Anteprima: aggiornala scegliendo il Sintomo, poi scrivi pure gia il risultato, verra portato con te quando premi "Aggiungi".</p><div id="cura-anteprima-dado"></div>';
+const target = document.getElementById('cura-anteprima-dado');
+if(info.forceFail){
+renderDiceCheck(target, {forceFail:true, failText:info.failText, onConfirm:function(){}});
+} else {
+renderDiceCheck(target, {faces:info.faces, addends:info.addends, successLabel:info.successLabel, onConfirm:function(){}});
+}
+}
+aggiornaAnteprima();
+document.getElementById('cura-sel').addEventListener('change', aggiornaAnteprima);
+document.getElementById('cura-guaritore').addEventListener('change', aggiornaAnteprima);
+document.getElementById('cura-pozione').addEventListener('change', aggiornaAnteprima);
+document.getElementById('cura-selfcure').addEventListener('change', aggiornaAnteprima);
+
+function creaEAggiungi(sid, guaritoreId, pozione, selfcure, risultatoPrecompilato){
+const s = SINTOMI_BY_ID[sid];
+const grave = isGrave(s.c);
+const g = medimagoState.guaritori.find(function(x){ return x.id === guaritoreId; });
+const costo = grave ? (g.sap25chi ? 0 : -1) : (g.sap25ter ? 0 : -0.5);
+g.fatica += costo;
+const entry = {tipo: grave ? 'Chirurgia' : 'Terapia', sintomo: s.n, sid: sid, esito: null, fatica: costo};
+g.esiti.push(entry);
+
+curaItemCounter += 1;
+const item = {
+uid: 'ci' + curaItemCounter,
+sid: sid,
+guaritoreId: guaritoreId,
+pozione: pozione,
+selfcure: selfcure,
+esito: null,
+entryRef: entry
+};
+medimagoState.coda.push(item);
+renderStepRiepilogo();
+
+const vuota = document.getElementById('cura-coda-vuota');
+if(vuota){ vuota.remove(); }
+aggiungiCardCura(item, risultatoPrecompilato);
+}
+
+onPress(document.getElementById('cura-add'), function(){
+const anteprimaInput = document.querySelector('#cura-anteprima-dado input[type=number]');
+let risultatoPrecompilato = null;
+if(anteprimaInput){
+if(anteprimaInput.value.length){ risultatoPrecompilato = anteprimaInput.value; }
+}
+creaEAggiungi(
+document.getElementById('cura-sel').value,
+document.getElementById('cura-guaritore').value,
+document.getElementById('cura-pozione').value,
+document.getElementById('cura-selfcure').checked,
+risultatoPrecompilato
+);
+document.getElementById('cura-pozione').value = 'no';
+document.getElementById('cura-selfcure').checked = false;
+aggiornaAnteprima();
+});
+
+const bulkBtn = document.getElementById('cura-bulk');
+if(bulkBtn){
+onPress(bulkBtn, function(){
+const guaritoreId = document.getElementById('cura-guaritore').value;
+opzioniIndividuati.forEach(function(sid){
+creaEAggiungi(sid, guaritoreId, 'no', false, null);
+});
+});
+}
+}
+
+function aggiungiCardCura(item, risultatoPrecompilato){
+const wrap = document.getElementById('cura-coda');
+const info = calcolaDadoCura(item.sid, item.guaritoreId, item.pozione, item.selfcure);
+const s = info.s;
+const g = info.g;
+
+const card = document.createElement('div');
+card.className = 'panel';
+card.style.background = '#fff';
+card.id = 'cura-card-' + item.uid;
+card.innerHTML =
+'<div class="queue-item" style="border:none;padding:0;margin:0">' +
+'<span class="class-badge class-' + s.c + '">' + s.c + '</span>' +
+'<span>' + esc(s.n) + '</span>' +
+'<span class="muted">' + (info.grave ? 'Chirurgia' : 'Terapia') + '</span>' +
+'<span class="pill">' + esc(g.nome) + '</span>' +
+'<span class="x" data-uid="' + item.uid + '">×</span>' +
+'</div>' +
+'<div id="cura-warn-' + item.uid + '" style="margin-top:8px"></div>' +
+'<div id="cura-dice-' + item.uid + '" style="margin-top:8px"></div>' +
+'<div id="cura-comp-' + item.uid + '"></div>';
+wrap.appendChild(card);
+
+onPress(card.querySelector('.x'), function(){
+g.fatica -= item.entryRef.fatica;
+const idx = g.esiti.indexOf(item.entryRef);
+if(idx >= 0){ g.esiti.splice(idx, 1); }
+const posizione = medimagoState.coda.indexOf(item);
+if(posizione >= 0){ medimagoState.coda.splice(posizione, 1); }
+card.remove();
+renderStepRiepilogo();
+if(!medimagoState.coda.length){
+wrap.innerHTML = '<p class="muted" id="cura-coda-vuota">Nessun Sintomo aggiunto ancora.</p>';
+}
+});
+
+const giaFallitoPrima = medimagoState.coda.some(function(x){
+if(x === item){ return false; }
+if(x.sid !== item.sid){ return false; }
+if(x.esito !== 'fail'){ return false; }
+return true;
+});
+if(giaFallitoPrima){
+document.getElementById('cura-warn-' + item.uid).innerHTML =
+'<p class="note">Attenzione: questo Sintomo ha gia una Complicazione in corso da un tentativo precedente. Il regolamento prevede che non se ne applichi una seconda uguale finche la prima non e esaurita (verifica i post di durata indicati nella Complicazione).</p>';
+}
+
+const diceTarget = document.getElementById('cura-dice-' + item.uid);
+
+function mostraComplicazione(esito){
+const box = document.getElementById('cura-comp-' + item.uid);
+if(!box){ return; }
+if(esito === 'fail'){
+box.innerHTML = '<div class="result-box grave" style="margin-top:10px"><b>Complicazione:</b> ' + esc(s.x) + '</div>';
+} else {
+box.innerHTML = '';
+}
+}
+
+if(info.forceFail){
+renderDiceCheck(diceTarget, {
+forceFail: true,
+failText: info.failText,
+onConfirm: function(){
+item.esito = 'fail';
+item.entryRef.esito = 'fail';
+renderStepRiepilogo();
+mostraComplicazione('fail');
+}
+});
+return;
+}
+
+renderDiceCheck(diceTarget, {
+faces: info.faces,
+addends: info.addends,
+successLabel: info.successLabel,
+onLiveChange: function(r, esito){ mostraComplicazione(esito); },
+onConfirm: function(r, esito){
+item.esito = esito;
+item.entryRef.esito = esito;
+renderStepRiepilogo();
+mostraComplicazione(esito);
+}
+});
+
+if(risultatoPrecompilato){
+const inputEl = diceTarget.querySelector('input[type=number]');
+if(inputEl){
+inputEl.value = risultatoPrecompilato;
+inputEl.dispatchEvent(new Event('input', {bubbles:true}));
+inputEl.dispatchEvent(new Event('blur', {bubbles:true}));
+}
+}
+}
+
+function renderStepRiepilogo(){
+const body = document.getElementById('md_body3');
+if(!body){ return; }
+if(!medimagoState.guaritori.length){
+body.innerHTML = '<p class="muted">Nessun Guaritore ancora aggiunto.</p>';
+return;
+}
+let html = '';
+medimagoState.guaritori.forEach(function(g){
+const conFatica = g.esiti.filter(function(e){ return typeof e.fatica === 'number'; });
+let dettaglioFatica = '';
+if(conFatica.length){
+dettaglioFatica = conFatica.map(function(e){
+return e.fatica + ' ' + e.tipo + ' ' + (e.sintomo || e.classe);
+}).join(', ') + ' = ' + g.fatica;
+} else {
+dettaglioFatica = '0';
+}
+html += '<div class="panel" style="background:#fff">' +
+'<h4>' + esc(g.nome) + '</h4>' +
+'<div class="kv"><span>Fatica spesa</span><b>' + g.fatica + '</b></div>' +
+'<p class="muted" style="font-size:13px">' + esc(dettaglioFatica) + '</p>';
+if(g.esiti.length){
+html += '<table class="tidy" style="margin-top:8px"><thead><tr><th>Fase</th><th>Bersaglio</th><th>Esito</th></tr></thead><tbody>';
+g.esiti.forEach(function(e){
+const bers = e.sintomo || e.classe;
+let cls, txt;
+if(e.esito === null){
+cls = 'muted';
+txt = 'In attesa del risultato';
+} else if(e.tipo === 'Complicazione'){
+cls = e.esito === 'fail' ? 'fail' : 'success';
+txt = e.esito === 'fail' ? 'Complicazione comparsa' : 'Nessuna Complicazione';
+} else {
+cls = e.esito === 'fail' ? 'fail' : 'success';
+txt = e.esito === 'fail' ? 'Non riuscito' : (e.esito === 'auto' ? 'Autoconclusivo' : 'Riuscito');
+}
+let extraComplicazione = '';
+if(e.esito === 'fail'){
+if(e.tipo === 'Terapia' || e.tipo === 'Chirurgia'){
+if(e.sid){
+const sint = SINTOMI_BY_ID[e.sid];
+if(sint){
+extraComplicazione = '<br><span class="fail" style="font-weight:400;font-size:13px">Complicazione per il Paziente: ' + esc(sint.x) + '</span>';
+}
+}
+}
+}
+html += '<tr><td>' + esc(e.tipo) + '</td><td>' + esc(bers) + '</td><td class="' + cls + '">' + txt + extraComplicazione + '</td></tr>';
+});
+html += '</tbody></table>';
+} else {
+html += '<p class="muted">Nessuna azione ancora registrata.</p>';
+}
+html += '</div>';
+});
+body.innerHTML = html;
+}
+
+/* ==========================================================================
+AVVIO
+========================================================================== */
+buildPazienteWizard();
+buildMedimagoWizard();
+</script>
+</body>
+</html>
