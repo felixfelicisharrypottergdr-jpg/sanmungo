@@ -33,7 +33,7 @@ font-family:Georgia,'Iowan Old Style','Palatino Linotype',serif;
 font-size:17px;
 line-height:1.5;
 }
-.wrap{max-width:980px;margin:0 auto;padding:28px 18px 80px}
+.wrap{max-width:980px;margin:0 auto;padding:28px 18px 12px}
 h1,h2,h3,h4{font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-weight:700; color:var(--ink); margin:0 0 6px}
 .brand{
 display:flex; align-items:baseline; gap:14px; justify-content:center;
@@ -1568,15 +1568,39 @@ body.innerHTML =
 '<div id="diag-dadi"></div>' +
 '<div class="panel" style="background:#fff;margin-top:20px">' +
 '<h4>Sintomi individuati</h4>' +
-'<p class="muted">Segna qui tutti i Sintomi che sai o hai scoperto, cosi li ritrovi gia pronti nel passo Cura senza doverli reinserire uno per uno.</p>' +
+'<p class="muted">Qui compaiono soltanto i Sintomi delle Classificazioni selezionate sopra. Segna quelli individuati: li ritroverai gia pronti nel passo Cura.</p>' +
 '<div class="field searchbar"><label>Cerca un Sintomo</label><input type="text" id="diag-ind-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div>' +
 '<div class="sym-list" id="diag-ind-lista" style="max-height:260px"></div>' +
 '</div>';
 
 const listaInd = document.getElementById('diag-ind-lista');
+const searchInd = document.getElementById('diag-ind-search');
+
+function classiDiagnosiSelezionate(){
+return Array.prototype.map.call(
+body.querySelectorAll('.diag-classe:checked'),
+function(chk){ return chk.value; }
+);
+}
+
+function renderListaSintomiDiagnosi(){
+const classiSel = classiDiagnosiSelezionate();
+const q = searchInd.value.trim().toLowerCase();
+
+if(!classiSel.length){
+listaInd.innerHTML =
+'<div class="muted" style="padding:12px 14px">' +
+'Seleziona prima una o più Classificazioni qui sopra: compariranno soltanto i Sintomi appartenenti alle Classificazioni scelte.' +
+'</div>';
+return;
+}
+
 let listaIndHtml = '';
-CLASSI.forEach(function(c){
-SINTOMI.filter(function(s){ return s.c === c; }).forEach(function(s){
+
+classiSel.forEach(function(c){
+SINTOMI.filter(function(s){
+return s.c === c && (!q || s.n.toLowerCase().indexOf(q) >= 0);
+}).forEach(function(s){
 const checked = medimagoState.sintomiIndividuati.has(s.id);
 listaIndHtml += '<div class="sym-row' + (checked?' checked':'') + '" data-id="' + s.id + '">' +
 '<input type="checkbox" data-id="' + s.id + '"' + (checked?' checked':'') + '>' +
@@ -1585,15 +1609,26 @@ listaIndHtml += '<div class="sym-row' + (checked?' checked':'') + '" data-id="' 
 '</div>';
 });
 });
+
+if(!listaIndHtml){
+listaIndHtml =
+'<div class="muted" style="padding:12px 14px">' +
+'Nessun Sintomo corrisponde alla ricerca nelle Classificazioni selezionate.' +
+'</div>';
+}
+
 listaInd.innerHTML = listaIndHtml;
+
 Array.prototype.forEach.call(listaInd.querySelectorAll('.sym-row'), function(row){
 onPress(row, function(ev){
 if(ev.target.tagName !== 'INPUT'){
 const box = row.querySelector('input');
 box.checked = !box.checked;
 }
+
 const id = row.getAttribute('data-id');
 const box = row.querySelector('input');
+
 if(box.checked){
 medimagoState.sintomiIndividuati.add(id);
 row.classList.add('checked');
@@ -1603,13 +1638,28 @@ row.classList.remove('checked');
 }
 });
 });
-document.getElementById('diag-ind-search').addEventListener('input', function(ev){
-const q = ev.target.value.trim().toLowerCase();
-Array.prototype.forEach.call(listaInd.querySelectorAll('.sym-row'), function(row){
-const txt = row.querySelector('.nm').textContent.toLowerCase();
-row.style.display = (txt.indexOf(q) >= 0) ? '' : 'none';
+}
+
+Array.prototype.forEach.call(body.querySelectorAll('.diag-classe'), function(chk){
+chk.addEventListener('change', function(){
+/* Se una Classificazione viene tolta, rimuove anche eventuali Sintomi
+   di quella classe già segnati, così non possono finire per errore in Cura. */
+if(!chk.checked){
+SINTOMI.forEach(function(s){
+if(s.c === chk.value){
+medimagoState.sintomiIndividuati.delete(s.id);
+}
+});
+}
+renderListaSintomiDiagnosi();
 });
 });
+
+searchInd.addEventListener('input', function(){
+renderListaSintomiDiagnosi();
+});
+
+renderListaSintomiDiagnosi();
 
 document.getElementById('diag-nota').addEventListener('change', function(ev){ medimagoState.causaNota = ev.target.checked; });
 
