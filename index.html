@@ -977,6 +977,76 @@ function sintomiScelti(){
 return Array.from(pazienteState.scelti).map(function(id){ return SINTOMI_BY_ID[id]; });
 }
 
+/* Importazione OFFGame da Riuscita e Forza delle Conoscenze.
+   Il payload contiene solo i Sintomi da riportare nella cartella clinica:
+   non li considera diagnosticati dal Guaritore e non compila il Reparto Medimaghi. */
+const SAN_MUNGO_BRIDGE_KEY = 'ffgdr_clinical_import_v1';
+
+function normalizzaNomeSintomoImport(v){
+return String(v||'')
+  .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+  .toLowerCase()
+  .replace(/[’']/g,' ')
+  .replace(/[^a-z0-9]+/g,' ')
+  .trim().replace(/\s+/g,' ');
+}
+
+function trovaSintomoImportato(voce){
+if(!voce){ return null; }
+const nome = normalizzaNomeSintomoImport(voce.n || voce.name || '');
+const classe = String(voce.c || voce.class || '').trim().toUpperCase();
+if(!nome){ return null; }
+let candidati = SINTOMI.filter(function(s){
+  return normalizzaNomeSintomoImport(s.n) === nome && (!classe || s.c === classe);
+});
+if(candidati.length === 1){ return candidati[0]; }
+candidati = SINTOMI.filter(function(s){ return normalizzaNomeSintomoImport(s.n) === nome; });
+if(candidati.length === 1){ return candidati[0]; }
+if(classe){
+  candidati = SINTOMI.filter(function(s){
+    const n = normalizzaNomeSintomoImport(s.n);
+    return s.c === classe && (n.indexOf(nome) >= 0 || nome.indexOf(n) >= 0);
+  });
+  if(candidati.length === 1){ return candidati[0]; }
+}
+return null;
+}
+
+function leggiImportazioneClinica(){
+let payload = null;
+/* Via principale: Riuscita salva il trasferimento nel localStorage del dominio
+   dei tool prima di aprire la pagina ForumFree che contiene questo iframe. */
+try{
+  const raw = window.localStorage.getItem(SAN_MUNGO_BRIDGE_KEY);
+  if(raw){
+    window.localStorage.removeItem(SAN_MUNGO_BRIDGE_KEY);
+    const box = JSON.parse(raw);
+    const age = Date.now() - Number(box && box.createdAt || 0);
+    if(box && box.payload && age >= 0 && age <= 30*60*1000){ payload = box.payload; }
+  }
+}catch(e){}
+
+/* Fallback: utile se il tool viene aperto direttamente e riceve #ffmed. */
+if(!payload){
+  try{
+    const h = String(window.location.hash || '');
+    const m = h.match(/^#ffmed=(.+)$/);
+    if(m){ payload = JSON.parse(decodeURIComponent(m[1])); }
+  }catch(e){}
+}
+
+if(!payload || Number(payload.v) !== 1 || !Array.isArray(payload.symptoms)){ return null; }
+let importati = 0;
+payload.symptoms.forEach(function(voce){
+  const sintomo = trovaSintomoImportato(voce);
+  if(sintomo && !pazienteState.scelti.has(sintomo.id)){
+    pazienteState.scelti.add(sintomo.id);
+    importati += 1;
+  }
+});
+return { payload:payload, importati:importati };
+}
+
 function renderSintomiSelezionatiTop(){
 const box = document.getElementById('pz-selected-symptoms');
 if(!box){ return; }
@@ -2277,6 +2347,9 @@ body.innerHTML = html;
 /* ==========================================================================
 AVVIO
 ========================================================================== */
+/* Importa prima di costruire il Reparto Pazienti, così i Sintomi trasferiti
+   sono visibili immediatamente anche nel riepilogo fisso in alto. */
+leggiImportazioneClinica();
 buildPazienteWizard();
 buildMedimagoWizard();
 </script>
