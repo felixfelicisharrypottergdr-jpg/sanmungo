@@ -477,6 +477,86 @@ footer{
 @media(max-width:820px){.effect-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.effect-grid{grid-template-columns:1fr}}
 
+
+/* ==========================================================
+   v34 — UX/UI refresh
+   ========================================================== */
+.wrap{max-width:1080px;padding:22px 18px 22px}
+.brand{padding-top:2px}
+.brand h1{line-height:1.05;margin-bottom:4px}
+.med-seal{margin-bottom:10px}
+.seal-toggle{max-width:600px;margin:18px auto 24px;border-width:1px;border-radius:12px;padding:4px;background:rgba(255,255,255,.55);gap:4px;overflow:visible}
+.seal-toggle button{border-radius:9px;padding:12px 14px;display:flex;align-items:center;justify-content:center;gap:8px;text-transform:none;font-size:15px;letter-spacing:.02em}
+.seal-toggle button.active{box-shadow:0 4px 12px rgba(127,45,54,.18)}
+.panel{padding:20px 22px;border-radius:16px;margin-bottom:16px}
+.step-body{border-top:4px solid #943943;box-shadow:0 10px 28px rgba(36,71,55,.09)}
+.step-body>h2{font-size:clamp(22px,3vw,29px);border-bottom:0;padding-bottom:0;margin-bottom:4px;display:block;color:#7f2d36}
+.step-kicker{font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:.08em;font-size:11px;font-weight:700;color:#6f9479;margin-bottom:4px}
+.step-intro{font-style:normal;margin:0 0 18px;padding:9px 12px;border-left:3px solid #a9c8ae;background:#e5f0e6;border-radius:0 8px 8px 0;font-size:14px;line-height:1.4}
+.stepper{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:7px;margin:0 0 12px}
+.step-btn{min-height:42px;border-radius:9px;padding:8px 10px;text-align:center;white-space:normal;line-height:1.15;background:#d7e6d9}
+.step-btn.done{background:#e5f0e6;border-color:#7da087;color:#365f4a}
+.step-btn.done::after{content:' ✓';font-weight:700}
+.step-btn.active{box-shadow:0 4px 12px rgba(148,57,67,.16)}
+.step-nav{border-top:1px solid #c1d7c5;padding-top:16px;margin-top:22px;gap:10px}
+.step-nav .btn{min-width:120px}
+.field{margin-bottom:12px}
+label{font-size:12px;margin-bottom:6px}
+input[type=text],input[type=number],select{min-height:44px;padding:10px 12px;border-radius:9px;transition:border-color .15s,box-shadow .15s,background .15s}
+.btn{min-height:42px;border-radius:9px;padding:10px 16px;font-weight:700;text-transform:none;letter-spacing:.02em}
+.btn.small{min-height:34px}
+.grid2,.grid3{gap:12px}
+.prep-block{border-radius:12px;padding:14px 16px;background:#edf5ee}
+.prep-block>.prep-title{font-size:16px;color:#7f2d36;margin-bottom:12px}
+.prep-preview{background:#dcebdd;border:1px solid #b5ceb9;padding:11px 13px;line-height:1.55;color:#315c46}
+.sym-list{max-height:520px;border-radius:12px;border-color:#abc7af;background:#f7fbf7}
+.sym-row{min-height:44px;padding:9px 12px;border-bottom-color:#d9e8db;transition:background .12s,transform .12s}
+.sym-row:hover{background:#e9f3ea}
+.sym-row.checked{background:#d7ead9;box-shadow:inset 4px 0 0 #7f2d36}
+.class-badge{min-width:42px;text-align:center;padding:4px 7px}
+.searchbar input{font-size:16px}
+.note{background:#e1eee3;border-left-color:#943943;padding:11px 13px;line-height:1.45}
+.phase-summary{display:flex;align-items:center;gap:8px;padding:11px 13px;margin:8px 0;background:#dcebdd;border:1px solid #b4cdb8;border-radius:10px;color:#315c46;font-size:14px}
+.rule-details{margin:8px 0 16px;border:1px solid #b7cfba;border-radius:10px;background:#f8fbf8;overflow:hidden}
+.rule-details summary{cursor:pointer;list-style:none;padding:11px 13px;font-weight:700;color:#7f2d36;background:#edf5ee;display:flex;align-items:center;justify-content:space-between}
+.rule-details summary::-webkit-details-marker{display:none}
+.rule-details summary::after{content:'+';font-size:20px;line-height:1;color:#7f2d36}
+.rule-details[open] summary::after{content:'−'}
+.rule-details-body{padding:12px 14px;font-size:14px;line-height:1.5;color:#365f4a}
+.dice-widget{border:1px solid #a7c5ac;border-left:4px solid #943943;border-radius:12px;padding:14px 15px;background:#fbfdfb;box-shadow:0 4px 12px rgba(36,71,55,.06)}
+.dice-tag{background:#e2eee4;border:1px solid #c3d8c6;font-size:12px;padding:9px 11px}
+.dice-input input{min-height:40px}
+.dice-out{padding-top:4px}
+.result-box{border-style:solid;border-width:1px;border-left-width:4px;padding:14px 16px;border-radius:12px}
+.result-box.ok{border-left-color:#4f795d}.result-box.grave{border-left-color:#8c2f39}
+.guaritore-card{display:grid;grid-template-columns:minmax(150px,1.2fr) repeat(3,minmax(120px,1fr)) auto;align-items:center;gap:8px 12px;padding:12px 14px;border-radius:11px;background:#f8fbf8}
+.guaritore-card .nome{color:#7f2d36;font-size:15px}
+.guaritore-card .stat{font-size:11px;line-height:1.35}
+table.tidy{background:#f8fbf8;border:1px solid #b8d0bc;border-radius:10px;overflow:hidden}
+table.tidy th{background:#d7e7da;color:#315c46;padding:9px 10px}
+table.tidy td{padding:9px 10px}
+.kv{gap:18px}
+.effect-editor{background:#f8fbf8;border-color:#b8d0bc}
+.effect-summary{background:#eef6ef}
+footer{margin-top:24px;padding-top:12px;border-top:1px solid #b7cfba}
+@media(max-width:820px){
+ .wrap{padding:14px 10px 20px}
+ .panel{padding:16px 14px}
+ .stepper{display:flex;overflow-x:auto;flex-wrap:nowrap;padding-bottom:5px;scrollbar-width:thin}
+ .step-btn{flex:0 0 auto;min-width:110px;max-width:150px}
+ .guaritore-card{grid-template-columns:1fr auto}
+ .guaritore-card .stat{grid-column:1/-1}
+ table.tidy{display:block;overflow-x:auto;white-space:nowrap}
+}
+@media(max-width:560px){
+ .seal-toggle{margin:14px 0 18px}
+ .seal-toggle button{font-size:13px;padding:10px 8px}
+ .brand h1{font-size:28px}
+ .step-body>h2{font-size:23px}
+ .step-nav .btn{min-width:0;flex:1}
+ .phase-summary{display:block}
+}
+
 </style>
 
 <style id="sanmungo-iframe-height-css">
@@ -502,8 +582,8 @@ body{
 </div>
 
 <div class="seal-toggle">
-<button type="button" id="tab-paziente" class="active">Reparto Pazienti</button>
-<button type="button" id="tab-medimago">Reparto Medimaghi</button>
+<button type="button" id="tab-paziente" class="active"><i class="fa-solid fa-bed-pulse" aria-hidden="true"></i> Reparto Pazienti</button>
+<button type="button" id="tab-medimago"><i class="fa-solid fa-user-doctor" aria-hidden="true"></i> Reparto Medimaghi</button>
 </div>
 
 <div id="view-paziente"></div>
@@ -642,7 +722,7 @@ const SINTOMI = [
 const SINTOMI_BY_ID = Object.fromEntries(SINTOMI.map(s=>[s.id,s]));
 </script>
 <script>
-/* v32 — revisione logica e dati */
+/* v33 — allineamento Studenti/Adulti: Diagnosta, Terapista, Chirurgo; rimosso il voto di Pozioni dal profilo Medimagico */
 /* Costruita per concatenazione per compatibilita con l'editor del forum */
 const EVT_NAME = 'cli' + 'ck';
 function onPress(el, fn){ el.addEventListener(EVT_NAME, fn); }
@@ -858,6 +938,7 @@ const html =
 '<div class="stepper" id="' + containerId + '_nav"></div>' +
 steps.map(function(s, i){
 return '<div class="panel step-body' + (i===current?' active':'') + '" id="' + containerId + '_step' + i + '">' +
+'<div class="step-kicker">Fase ' + (i+1) + ' di ' + steps.length + '</div>' +
 '<h2>' + esc(s.title) + '</h2>' +
 '<p class="step-intro">' + esc(s.intro) + '</p>' +
 '<div id="' + containerId + '_body' + i + '"></div>' +
@@ -1126,7 +1207,7 @@ return scelti.length > 0 && scelti.every(function(s){ return sintomoComa(s); });
 function buildPazienteWizard(){
 const root = document.getElementById('view-paziente');
 const steps = [
-{ short:"Sintomi", title:"Quali Sintomi hai?", intro:"Per prima cosa, vediamo quali Sintomi il tuo PG ha contratto. Seleziona tutti quelli presenti, poi premi Avanti.",
+{ short:"Sintomi", title:"Quali Sintomi hai?", intro:"Seleziona tutti i Sintomi presenti, poi prosegui.",
 canLeave: function(){
 if(!pazienteState.scelti.size){
 return 'Seleziona almeno un Sintomo prima di continuare.';
@@ -1136,7 +1217,7 @@ return 'Con soli Sintomi X-XXX il regolamento non prevede che il PG possa arriva
 }
 return true;
 } },
-{ short:"Gravita", title:"Qual e la gravita?", intro:"Ecco un riepilogo dei Sintomi selezionati e della Classificazione piu grave tra questi.",
+{ short:"Gravità", title:"Qual è la gravità?", intro:"Riepilogo dei Sintomi selezionati e della Classificazione più grave.",
 onShow: renderStepGravita,
 canLeave: function(){
 if(statoAgonia() && !pazienteState.agoniaStabilizzata){
@@ -1765,7 +1846,6 @@ onShow: renderStepRiepilogo }
 mdStepper = buildStepper(root, 'md', steps, 0);
 }
 
-const VOTI = [{v:"T",base:5},{v:"D",base:6},{v:"S",base:7},{v:"A",base:8},{v:"O",base:9},{v:"E",base:10}];
 const ROMANI = ["I","II","III","IV","V"];
 
 function opzioniLivelli(maxLiv){
@@ -1967,27 +2047,52 @@ function renderEffectsSummary(g,onlyUsed){
 
 function profiloGuaritoreDaForm(){
 const tipo = document.querySelector('input[name="g-tipo"]:checked').value;
-const voto = document.getElementById('g-voto').value;
 let sap = tipo === 'studente' ? parseInt(document.getElementById('g-sap-stud').value,10) : clampInt(document.getElementById('g-sap-adulto').value,0,25);
 if(tipo === 'studente'){ sap = sap > 0 ? 1 : 0; }
 let diagnost = parseInt(document.getElementById('g-diagnosta').value,10) || 0;
 let terap = parseInt(document.getElementById('g-terapista').value,10) || 0;
 let chirurg = parseInt(document.getElementById('g-chirurgo').value,10) || 0;
-/* Studenti e Adulti senza Sapienza che acquistano una Avanzata ottengono il livello I. */
+/* Gli Studenti possono possedere solo il livello I. Anche gli Adulti senza Sapienza
+   possono acquistare la singola Conoscenza Avanzata al livello I. */
 if(tipo === 'studente' || sap <= 0){ diagnost=Math.min(diagnost,1); terap=Math.min(terap,1); chirurg=Math.min(chirurg,1); }
-const votoObj = VOTI.find(function(x){ return x.v===voto; }) || VOTI[0];
-const diagBase = diagnost>0 ? 11+diagnost : (tipo==='studente' ? votoObj.base : 11);
-const terBase = terap>0 ? 11+terap : (tipo==='studente' ? votoObj.base : 11);
-let chiBase = null;
-if(chirurg>0){ chiBase = 6+chirurg; }
-else if(sap>0){ chiBase = sap<=5 ? 4 : (sap<=10 ? 5 : (sap<=15 ? 6 : (sap<=20 ? 7 : 8))); }
-const diagLabel = diagnost>0 ? 'Diagnosta '+ROMANI[diagnost-1] : (tipo==='studente' ? 'Studente, voto '+voto : 'Adulto senza Diagnosta');
-const terLabel = terap>0 ? 'Terapista '+ROMANI[terap-1] : (tipo==='studente' ? 'Studente, voto '+voto : 'Adulto senza Terapista');
-let chiLabel;
-if(chirurg>0){ chiLabel='Chirurgo '+ROMANI[chirurg-1]; }
-else if(sap>0){ chiLabel='Sapienza Medimagica '+sap+' senza Chirurgo'; }
-else { chiLabel='Nessuna Sapienza Medimagica né Chirurgo'; }
-return {tipo:tipo,voto:voto,sapienza:sap,diagnosta:diagnost,terapista:terap,chirurgo:chirurg,
+
+let diagBase, terBase, chiBase = null;
+let diagLabel, terLabel, chiLabel;
+
+if(tipo === 'studente'){
+  /* Guida Medimagia: valori specifici Studenti, indipendenti da qualsiasi voto scolastico. */
+  diagBase = diagnost > 0 ? 9 : 7;
+  terBase = terap > 0 ? 9 : 7;
+  chiBase = chirurg > 0 ? 7 : null;
+
+  diagLabel = diagnost > 0 ? 'Studente con Diagnosta I' : 'Studente senza Diagnosta';
+  terLabel = terap > 0 ? 'Studente con Terapista I' : 'Studente senza Terapista';
+  chiLabel = chirurg > 0 ? 'Studente con Chirurgo I' : 'Studente senza Chirurgo';
+} else {
+  diagBase = diagnost > 0 ? 11 + diagnost : 11;
+  terBase = terap > 0 ? 11 + terap : 11;
+
+  diagLabel = diagnost > 0 ? 'Diagnosta '+ROMANI[diagnost-1] : 'Adulto senza Diagnosta';
+  terLabel = terap > 0 ? 'Terapista '+ROMANI[terap-1] : 'Adulto senza Terapista';
+
+  const chiDaSapienza = sap > 0 ? (sap<=5 ? 4 : (sap<=10 ? 5 : (sap<=15 ? 6 : (sap<=20 ? 7 : 8)))) : null;
+  const chiDaLivello = chirurg > 0 ? 6 + chirurg : null;
+
+  if(chiDaSapienza !== null || chiDaLivello !== null){
+    chiBase = Math.max(chiDaSapienza === null ? -Infinity : chiDaSapienza, chiDaLivello === null ? -Infinity : chiDaLivello);
+    if(chirurg > 0 && sap > 0){
+      chiLabel = 'Chirurgo '+ROMANI[chirurg-1]+' / Sapienza Medimagica '+sap+' (valore più alto)';
+    } else if(chirurg > 0){
+      chiLabel = 'Chirurgo '+ROMANI[chirurg-1];
+    } else {
+      chiLabel = 'Sapienza Medimagica '+sap+' senza Chirurgo';
+    }
+  } else {
+    chiLabel = 'Nessuna Sapienza Medimagica né Chirurgo';
+  }
+}
+
+return {tipo:tipo,sapienza:sap,diagnosta:diagnost,terapista:terap,chirurgo:chirurg,
 diagBase:diagBase,diagLabel:diagLabel,terBase:terBase,terLabel:terLabel,chiBase:chiBase,chiLabel:chiLabel};
 }
 
@@ -2014,21 +2119,20 @@ document.getElementById('g-profile-preview').innerHTML =
 
 function renderStepGuaritori(){
 const body = document.getElementById('md_body0');
-const votiOpt=VOTI.map(function(o){ return '<option value="'+o.v+'">Voto '+o.v+'</option>'; }).join('');
 body.innerHTML =
 '<div class="panel" style="background:#fff">'+
 '<div class="grid2"><div class="field"><label>Nome del PG</label><input type="text" id="g-nome" placeholder="Es. Mira Ashwood"></div>'+
 '<div class="field"><label>Tecnica (valore base)</label><input type="number" id="g-tecnica" value="0" min="0" step="1"></div></div>'+
 '<div class="prep-block"><div class="prep-title">Profilo Medimagico</div>'+
 '<div class="seg" id="g-tipo-seg"><label class="on"><input type="radio" name="g-tipo" value="studente" checked>Studente</label><label><input type="radio" name="g-tipo" value="adulto">Adulto</label></div>'+
-'<div id="g-studente-fields" class="grid2"><div class="field"><label>Voto in Pozioni</label><select id="g-voto">'+votiOpt+'</select></div>'+
-'<div class="field"><label>Sapienza Medimagica</label><select id="g-sap-stud"><option value="0">Nessuna</option><option value="1">Livello I</option></select></div></div>'+
+'<div id="g-studente-fields" class="field" style="max-width:300px"><label>Sapienza Medimagica</label><select id="g-sap-stud"><option value="0">Nessuna</option><option value="1">Livello I</option></select></div>'+
 '<div id="g-adulto-fields" class="field hidden" style="max-width:260px"><label>Punti Sapienza Medimagica (0-25)</label><input type="number" id="g-sap-adulto" value="0" min="0" max="25" step="1"></div>'+
 '<div class="grid3"><div class="field"><label>Diagnosta</label><select id="g-diagnosta">'+opzioniLivelli(1)+'</select></div>'+
 '<div class="field"><label>Terapista</label><select id="g-terapista">'+opzioniLivelli(1)+'</select></div>'+
 '<div class="field"><label>Chirurgo</label><select id="g-chirurgo">'+opzioniLivelli(1)+'</select></div></div>'+
-'<p class="muted">Studenti e Adulti senza Sapienza possono acquistare una Conoscenza Avanzata ottenendo il bonus del livello I. Gli Studenti non possono superare Sapienza I.</p>'+
-'<div class="prep-preview" id="g-profile-preview"></div></div>'+
+'<p class="muted"><b>Studenti:</b> senza Diagnosta/Terapista usano base 7; con Diagnosta I o Terapista I usano base 9; la Chirurgia è possibile solo con Chirurgo I e usa base 7. <b>Adulti:</b> senza Sapienza possono acquistare il livello I; con Sapienza e Chirurgo, in Chirurgia si applica sempre il valore più favorevole. Gli Studenti non possono superare Sapienza I.</p>'+
+'<div class="prep-preview" id="g-profile-preview"></div>'+
+'<p class="muted" style="margin:10px 0 0"><b>Nota:</b> il voto nella singola Pozione prodotta serve soltanto quando si applicano gli effetti dell’incidente “Esplosione di un Calderone”; non modifica Diagnosi, Terapia o Chirurgia.</p></div>'+
 '<div class="prep-block"><div class="prep-title">Oggetti / Conoscenze del Guaritore</div>'+
 '<p class="muted">I bonus <b>Generali</b> modificano la Tecnica una sola volta e vengono applicati prima delle formule. I bonus di <b>Diagnosi, Terapia o Chirurgia</b> vengono invece scelti nella singola azione. Per questi ultimi puoi registrare Fatica e numero di usi; il tool li consumerà automaticamente. Per i bonus specifici della singola fase resta il massimo regolamentare di +5 complessivi, contando insieme bonus al parametro e bonus alle possibilità; se la selezione supera il limite, l’azione viene bloccata.</p>'+
 '<div id="g-effects-list"></div><button type="button" class="btn small ghost" id="g-effect-add">+ Aggiungi bonus</button><div id="g-effect-warn" class="step-warning"></div></div>'+
@@ -2038,7 +2142,7 @@ setupNumericInputs(body);
 const effectsHost=document.getElementById('g-effects-list');
 onPress(document.getElementById('g-effect-add'),function(){addEffectEditor(effectsHost);aggiornaFormProfiloGuaritore();});
 effectsHost.addEventListener('effectchange',aggiornaFormProfiloGuaritore);
-['g-voto','g-sap-stud','g-sap-adulto','g-diagnosta','g-terapista','g-chirurgo'].forEach(function(id){
+['g-sap-stud','g-sap-adulto','g-diagnosta','g-terapista','g-chirurgo'].forEach(function(id){
 const el=document.getElementById(id); el.addEventListener(id==='g-sap-adulto'?'input':'change',aggiornaFormProfiloGuaritore);
 });
 const tecnicaInput=document.getElementById('g-tecnica');
@@ -2056,7 +2160,7 @@ if(pr.tipo==='adulto'&&!numberInputIsValid(document.getElementById('g-sap-adulto
 guaritoreCounter += 1; const nomeVal=document.getElementById('g-nome').value.trim(); const effects=raccolta.effects; const storicoFatica=initialEffectsFatigue(effects);
 medimagoState.guaritori.push({
 id:'g'+guaritoreCounter, nome:nomeVal||('Guaritore '+guaritoreCounter), tecnica:clampInt(document.getElementById('g-tecnica').value,0,Number.MAX_SAFE_INTEGER),
-tipo:pr.tipo,voto:pr.voto,sapienza:pr.sapienza,diagnosta:pr.diagnosta,terapista:pr.terapista,chirurgo:pr.chirurgo,
+tipo:pr.tipo,sapienza:pr.sapienza,diagnosta:pr.diagnosta,terapista:pr.terapista,chirurgo:pr.chirurgo,
 diagBase:pr.diagBase,diagLabel:pr.diagLabel,terBase:pr.terBase,terLabel:pr.terLabel,chiBase:pr.chiBase,chiLabel:pr.chiLabel,
 sap25diag:pr.sapienza>=25 && pr.diagnosta>0,sap25ter:pr.sapienza>=25 && pr.terapista>0,sap25chi:pr.sapienza>=25 && pr.chirurgo>0,
 fatica:-storicoFatica,esiti:[],diagCharges:{},effects:effects});
@@ -2157,7 +2261,8 @@ if(!medimagoState.guaritori.length){ body.innerHTML='<p class="muted">Torna al p
 let checks='';
 CLASSI.forEach(function(c){ checks += '<label class="pill" style="margin-right:8px;margin-bottom:8px;display:inline-flex"><input type="checkbox" class="diag-classe" value="'+c+'" style="margin-right:6px"'+(medimagoState.classiDiagnosi.has(c)?' checked':'')+'> '+c+'</label>'; });
 body.innerHTML =
-'<p class="note">Una singola azione di Diagnosi costa <b>-2 Fatica</b> e può comprendere da 1 a 5d40, uno per ciascuna Classificazione effettivamente presente. Se lo stesso Guaritore tira più Classificazioni nello stesso blocco generato, la Fatica base viene conteggiata una sola volta. Un nuovo tentativo dopo un errore è una nuova azione.<br><br><b>Oggetti/Conoscenze:</b> i bonus generali alla Tecnica sono già inclusi automaticamente. Per ogni Classificazione scegli invece quali bonus specifici di Diagnosi applicare; i bonus al parametro modificano prima la Tecnica effettiva e i bonus alle possibilità vengono applicati dopo; resta però il massimo regolamentare di <b>+5 complessivi</b> per i bonus specifici della singola fase. Se la combinazione selezionata supera +5, il tool blocca l’azione e chiede di ridurla. Usi e Fatica vengono consumati una sola volta per la stessa azione diagnostica, anche se l’effetto è selezionato su più Classificazioni dello stesso blocco.<br><br><b>Promemoria causa/malattia:</b> se la causa scatenante o la malattia è ancora sconosciuta, diventa nota quando il Guaritore ha individuato almeno il <b>60% dei Sintomi totali</b>. Il tool non calcola automaticamente questa percentuale perché il Reparto Medimaghi registra i Sintomi riconosciuti, non l’elenco OFFGame completo dei Sintomi realmente presenti.</p>'+
+'<div class="phase-summary"><b>Diagnosi:</b> -2 Fatica per azione • da 1 a 5d40 • bonus specifici max +5</div>'+
+'<details class="rule-details"><summary>Regole, bonus e causa della malattia</summary><div class="rule-details-body">Una singola azione può comprendere un d40 per ciascuna Classificazione presente; nello stesso blocco la Fatica base si paga una sola volta. Un nuovo tentativo dopo un errore è una nuova azione.<br><br><b>Oggetti/Conoscenze:</b> i bonus generali alla Tecnica sono inclusi automaticamente. I bonus specifici si scelgono per la singola Classificazione; parametro prima, possibilità dopo, con massimo <b>+5 complessivi</b>. Usi e Fatica vengono consumati una sola volta per la stessa azione.<br><br><b>Causa/malattia:</b> se ancora sconosciuta, diventa nota individuando almeno il <b>60% dei Sintomi totali</b>. Questa percentuale non viene calcolata automaticamente perché il tool registra solo i Sintomi riconosciuti.</div></details>'+
 '<div style="margin:0 0 10px">'+checks+'</div>'+
 '<label><input type="checkbox" id="diag-nota"'+(medimagoState.causaNota?' checked':'')+'> Il PG malato o altri PG conoscono cosa è accaduto (+3 a ogni dado)</label>'+
 '<button type="button" class="btn gold" id="diag-genera" style="margin-top:14px">Genera le righe di Diagnosi</button>'+
@@ -2311,7 +2416,8 @@ if(!medimagoState.guaritori.length){body.innerHTML='<p class="muted">Aggiungi pr
 const individuati=Array.from(medimagoState.sintomiIndividuati).filter(function(id){return SINTOMI_BY_ID[id];}); const opzioniSintomi=SINTOMI.map(function(ss){return '<option value="'+ss.id+'">'+ss.c+' — '+esc(ss.n)+'</option>';}).join('');
 let bulkHtml=''; if(individuati.length){bulkHtml='<div class="panel" style="background:#fff"><h4>Sintomi riconosciuti nella Diagnosi</h4><p class="muted">'+individuati.map(function(id){const x=SINTOMI_BY_ID[id];return x.c+' '+esc(x.n);}).join(' • ')+'</p><p class="note">Configura ogni Sintomo singolarmente: Guaritore, Pozione, Oggetti/Conoscenze e auto-cura possono cambiare da un trattamento all’altro.</p></div>';}
 body.innerHTML=bulkHtml+
-'<p class="note"><b>Regole chiave:</b> tutte le Componenti del Rimedio devono essere disponibili; quando il Rimedio presenta un’alternativa esplicita, ne basta una; l’Acqua Distillata può essere ottenuta sempre autoconclusivamente. Tutti i Passaggi richiesti per un singolo Sintomo possono essere eseguiti nello stesso post e si possono tentare al massimo 3 Sintomi per ogni post. Se i Passaggi richiedono Incantesimi o Tecniche, non serve un ulteriore dado di riuscita né va aggiunta la loro normale Fatica: sono già compresi nel tiro e nella Fatica di Terapia/Chirurgia. I bonus generali alla Tecnica sono applicati automaticamente; gli Oggetti/Conoscenze specifici della fase vengono scelti qui e il tool ne applica realmente bonus, Fatica e usi. Per i bonus specifici di Terapia/Chirurgia resta il tetto regolamentare di <b>+5 complessivi</b>: il parametro viene applicato prima e le possibilità dopo, ma una combinazione oltre +5 viene bloccata invece di essere conteggiata parzialmente.</p>'+
+'<div class="phase-summary"><b>Terapia / Chirurgia:</b> fino a 3 Sintomi per post • tutti i Componenti richiesti • bonus specifici max +5</div>'+
+'<details class="rule-details"><summary>Regole complete del trattamento</summary><div class="rule-details-body">Devono essere disponibili tutte le Componenti del Rimedio; se è prevista un’alternativa esplicita, ne basta una. L’Acqua Distillata è sempre ottenibile autoconclusivamente. Tutti i passaggi di un singolo Sintomo possono essere eseguiti nello stesso post.<br><br>Se i passaggi richiedono Incantesimi o Tecniche, non serve un ulteriore tiro e non va aggiunta la loro normale Fatica: sono già compresi nel tiro e nella Fatica di Terapia/Chirurgia.<br><br>I bonus generali alla Tecnica sono automatici; gli Oggetti/Conoscenze specifici si scelgono qui. Il massimo dei bonus specifici è <b>+5 complessivi</b>: parametro prima, possibilità dopo.</div></details>'+
 '<h4 style="margin-top:20px">Sintomi già aggiunti</h4><div id="cura-coda"></div>'+
 '<button type="button" class="btn ghost" id="cura-toggle-form" style="margin-top:20px">+ Aggiungi Sintomo già noto/comunicato dal Narratore o riconosciuto</button>'+
 '<div id="cura-form-wrap" class="hidden" style="margin-top:14px">'+
