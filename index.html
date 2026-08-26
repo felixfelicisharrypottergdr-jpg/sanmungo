@@ -471,6 +471,21 @@ footer{
   font-size:13px;
   font-style:italic;
 }
+
+.clinical-import-banner{
+  margin:14px 0 0;
+  padding:11px 13px;
+  border:1px solid #c5b58c;
+  border-left:4px solid #8b6a2f;
+  border-radius:9px;
+  background:#fffaf0;
+  color:#4f432f;
+  line-height:1.4;
+  box-shadow:0 3px 10px rgba(88,69,38,.06);
+}
+.clinical-import-banner strong{color:#7f2d36;}
+.clinical-import-meta{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:5px;font-size:12.5px;color:#6b5b42;}
+.clinical-import-meta span{white-space:nowrap;}
 @media(max-width:640px){
   .selected-symptoms-head{align-items:flex-start;}
   .selected-symptom-chip{width:100%;}
@@ -981,6 +996,8 @@ return Array.from(pazienteState.scelti).map(function(id){ return SINTOMI_BY_ID[i
    Il payload contiene solo i Sintomi da riportare nella cartella clinica:
    non li considera diagnosticati dal Guaritore e non compila il Reparto Medimaghi. */
 const SAN_MUNGO_BRIDGE_KEY = 'ffgdr_clinical_import_v1';
+const SAN_MUNGO_BRIDGE_PREFIX = 'ffgdr_clinical_import_v2_';
+let importazioneClinicaAttiva = null;
 
 function normalizzaNomeSintomoImport(v){
 return String(v||'')
@@ -1014,17 +1031,45 @@ return null;
 
 function leggiImportazioneClinica(){
 let payload = null;
-/* Via principale: Riuscita salva il trasferimento nel localStorage del dominio
-   dei tool prima di aprire la pagina ForumFree che contiene questo iframe. */
+
+/* Ogni bersaglio viene salvato da Riuscita in una chiave distinta.
+   Una singola cartella del San Mungo reclama un solo bersaglio: così Sintomi
+   appartenenti a PG diversi non possono essere fusi accidentalmente. */
 try{
-  const raw = window.localStorage.getItem(SAN_MUNGO_BRIDGE_KEY);
-  if(raw){
-    window.localStorage.removeItem(SAN_MUNGO_BRIDGE_KEY);
-    const box = JSON.parse(raw);
-    const age = Date.now() - Number(box && box.createdAt || 0);
-    if(box && box.payload && age >= 0 && age <= 30*60*1000){ payload = box.payload; }
+  const now = Date.now();
+  const candidati = [];
+  for(let i=0;i<window.localStorage.length;i++){
+    const key = window.localStorage.key(i) || '';
+    if(key.indexOf(SAN_MUNGO_BRIDGE_PREFIX) !== 0){ continue; }
+    let box = null;
+    try{ box = JSON.parse(window.localStorage.getItem(key) || ''); }catch(e){ box = null; }
+    const age = now - Number(box && box.createdAt || 0);
+    if(!box || !box.payload || age < 0 || age > 30*60*1000){
+      try{ window.localStorage.removeItem(key); i--; }catch(e){}
+      continue;
+    }
+    candidati.push({key:key, box:box});
+  }
+  candidati.sort(function(a,b){ return Number(a.box.createdAt||0) - Number(b.box.createdAt||0); });
+  if(candidati.length){
+    const scelto = candidati[0];
+    window.localStorage.removeItem(scelto.key);
+    payload = scelto.box.payload;
   }
 }catch(e){}
+
+/* Compatibilità con il ponte precedente a bersaglio singolo. */
+if(!payload){
+  try{
+    const raw = window.localStorage.getItem(SAN_MUNGO_BRIDGE_KEY);
+    if(raw){
+      window.localStorage.removeItem(SAN_MUNGO_BRIDGE_KEY);
+      const box = JSON.parse(raw);
+      const age = Date.now() - Number(box && box.createdAt || 0);
+      if(box && box.payload && age >= 0 && age <= 30*60*1000){ payload = box.payload; }
+    }
+  }catch(e){}
+}
 
 /* Fallback: utile se il tool viene aperto direttamente e riceve #ffmed. */
 if(!payload){
@@ -1132,7 +1177,21 @@ onShow: renderStepFinale },
 ];
 const stepper = buildStepper(root, 'pz', steps, 0);
 pzStepper = stepper;
+let importBanner = '';
+if(importazioneClinicaAttiva && importazioneClinicaAttiva.payload){
+  const imp = importazioneClinicaAttiva.payload;
+  const nome = String(imp.targetName || '').trim() || 'Bersaglio importato';
+  const causa = String(imp.cause || '').trim();
+  const persa = Number(imp.healthLost);
+  const totale = Number(imp.healthTotal);
+  importBanner = '<div class="clinical-import-banner"><strong>Cartella importata: ' + esc(nome) + '</strong><br>Questa cartella contiene soltanto i Sintomi di questo bersaglio; eventuali altri bersagli dell’azione vengono gestiti in cartelle separate.' +
+    '<div class="clinical-import-meta">' +
+    (causa ? '<span><b>Causa:</b> ' + esc(causa) + '</span>' : '') +
+    (Number.isFinite(persa) && persa >= 0 ? '<span><b>Salute persa:</b> ' + esc(String(persa)) + (Number.isFinite(totale) && totale>0 ? ' / ' + esc(String(totale)) : '') + '</span>' : '') +
+    '</div></div>';
+}
 root.insertAdjacentHTML('afterbegin',
+importBanner +
 '<div class="selected-symptoms-top" id="pz-selected-symptoms">' +
 '<div class="selected-symptoms-head"><p class="selected-symptoms-title">Sintomi selezionati</p><span class="selected-symptoms-count" id="pz-selected-symptoms-count">0</span></div>' +
 '<div class="selected-symptoms-list" id="pz-selected-symptoms-list"></div>' +
@@ -2349,7 +2408,7 @@ AVVIO
 ========================================================================== */
 /* Importa prima di costruire il Reparto Pazienti, così i Sintomi trasferiti
    sono visibili immediatamente anche nel riepilogo fisso in alto. */
-leggiImportazioneClinica();
+importazioneClinicaAttiva = leggiImportazioneClinica();
 buildPazienteWizard();
 buildMedimagoWizard();
 </script>
