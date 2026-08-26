@@ -473,13 +473,35 @@ footer{
   font-size:11px;
 }
 .effect-box{margin:10px 0;padding:10px 12px;border:1px dashed var(--gold);border-radius:9px;background:#fffdf5}
+.med-preset-picker{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:10px;
+  align-items:end;
+  margin:10px 0 14px;
+  padding:12px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#f8fbf8;
+}
+.med-preset-picker .field{margin:0}
+.med-preset-help{font-size:12px;color:var(--sage);margin:-5px 0 12px;line-height:1.4}
+.effect-editor[data-preset-key]{border-left:4px solid var(--gold)}
+.effect-preset-badge{
+  display:inline-flex;align-items:center;gap:5px;margin:0 0 8px;padding:3px 8px;
+  border-radius:999px;background:var(--parchment-dark);border:1px solid var(--line);
+  font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+}
+.effect-cap-note{font-size:11px;color:var(--sage);margin-top:4px}
+@media(max-width:640px){.med-preset-picker{grid-template-columns:1fr}}
+
 .effect-box h5{margin:0 0 7px;color:var(--ink-soft);font-size:14px}
 @media(max-width:820px){.effect-grid{grid-template-columns:1fr 1fr}}
 @media(max-width:560px){.effect-grid{grid-template-columns:1fr}}
 
 
 /* ==========================================================
-   v34 — UX/UI refresh
+   v35 — UX/UI + catalogo bonus regolamentato da Prezzario/Conoscenze/Incantesimi
    ========================================================== */
 .wrap{max-width:1080px;padding:22px 18px 22px}
 .brand{padding-top:2px}
@@ -1858,13 +1880,140 @@ function clampInt(v,min,max){ const n=Number(v); if(!Number.isFinite(n)) return 
 
 /* ==========================================================================
 OGGETTI / CONOSCENZE — bonus strutturati per Guaritore
-Generale = modifica permanente della Tecnica prima delle formule.
-Diagnosi/Terapia/Chirurgia = effetto selezionabile per la singola azione.
+v35: stesso modello dei tool Erbologia/Magizoologia:
+- catalogo regolamentato;
+- parametro prima della formula, possibilità dopo;
+- usi realmente consumati quando l'azione viene confermata;
+- Fatica per uso o Fatica una tantum;
+- tetto +5 applicato soltanto alle Conoscenze Medimagiche, non agli Oggetti generici.
 ========================================================================== */
 let medEffectCounter=0;
 function nuovaIdEffetto(){medEffectCounter+=1;return 'mef'+medEffectCounter;}
 function faseEffettoLabel(f){return f==='generale'?'Generale':(f==='diagnosi'?'Diagnosi':(f==='terapia'?'Terapia':'Chirurgia'));}
 function tipoEffettoLabel(k){return k==='parametro'?'Tecnica (parametro)':'Possibilità';}
+
+const MED_STATIC_PRESETS={};
+function medPresetDef(k,o){MED_STATIC_PRESETS[k]=o;}
+medPresetDef('ars_std',{group:'Prezzario — Manuali',label:"Manuali dell'Ars — standard / Obscurus Books (+2 Tecnica)",source:"Manuali dell'Ars",condition:'10 usi',kind:'parametro',value:2,totalUses:10,phases:['diagnosi','terapia','chirurgia'],medCap:false});
+medPresetDef('ars_elfi',{group:'Prezzario — Manuali',label:"Manuali dell'Ars — Mercato degli Elfi (+1 Tecnica)",source:"Manuali dell'Ars — Mercato degli Elfi",condition:'5 usi',kind:'parametro',value:1,totalUses:5,phases:['diagnosi','terapia','chirurgia'],medCap:false});
+for(let i=1;i<=4;i++){
+  medPresetDef('talismano_tecnica_'+i,{group:'Altre Conoscenze',label:'Talismano Astronomico — Urano/Luna Piena (+'+i+' Tecnica)',source:'Talismano Astronomico — Urano/Luna Piena',condition:'Bonus a Tecnica già ottenuto · 3 usi · Fatica -3 già spesa nella creazione',kind:'parametro',value:i,totalUses:3,phases:['diagnosi','terapia','chirurgia'],medCap:false,stackGroup:'talismano'});
+}
+medPresetDef('ragno_std',{group:'Prezzario — Strumenti Medimagici',label:'Ragno Indagatore — standard (+3 Diagnosi)',source:'Ragno Indagatore',condition:'Prezzario · 5 usi',kind:'possibilita',value:3,totalUses:5,phases:['diagnosi'],medCap:false});
+medPresetDef('ragno_elfi',{group:'Prezzario — Strumenti Medimagici',label:'Ragno Indagatore — Mercato degli Elfi (+1 Diagnosi)',source:'Ragno Indagatore — Mercato degli Elfi',condition:'Prezzario · 2 usi',kind:'possibilita',value:1,totalUses:2,phases:['diagnosi'],medCap:false});
+for(let i=1;i<=7;i++){
+  medPresetDef('amu_'+i,{group:'Prezzario — Bonus generici',label:'Amuleto della Fortuna (+'+i+')',source:'Amuleto della Fortuna',condition:'3 usi · massimo 1 Amuleto della Fortuna per role',kind:'possibilita',value:i,totalUses:3,phases:['diagnosi','terapia','chirurgia'],medCap:false,stackGroup:'fortuna',roleOnce:true});
+}
+for(let i=1;i<=3;i++){
+  medPresetDef('magibio_'+i,{group:'Altre Conoscenze',label:'Magi Biografia — Mungo Bonham · bonus +'+i+' già ottenuto',source:'Magi Biografia — Mungo Bonham',condition:'Bonus Medimagia già ottenuto · 3 usi · Fatica già spesa nella role di preparazione',kind:'possibilita',value:i,totalUses:3,phases:['diagnosi','terapia','chirurgia'],medCap:false,stackGroup:'magi-biografia'});
+}
+
+function medPresetProfile(){
+  const tipo=(document.querySelector('input[name="g-tipo"]:checked')||{}).value||'studente';
+  let sap=0;
+  const se=document.getElementById(tipo==='studente'?'g-sap-stud':'g-sap-adulto');
+  if(se){sap=clampInt(se.value,0,25);}
+  if(tipo==='studente'){sap=sap>0?1:0;}
+  return {tipo:tipo,sapienza:sap,adultoSap:tipo==='adulto'&&sap>0};
+}
+function medCommonPhaseValue(pr,outcome){
+  if(pr.tipo==='studente'){return outcome==='100'?2:1;}
+  if(pr.sapienza>0){return outcome==='100'?4:null;}
+  return outcome==='100'?3:2;
+}
+function medNihilFatigue(pr,outcome){
+  if(pr.tipo==='studente'){return outcome==='100'?3.5:(outcome==='66'?4:4.5);}
+  if(pr.sapienza>0){return outcome==='100'?1.5:null;}
+  return outcome==='100'?2:(outcome==='66'?2.5:3);
+}
+function medNihilDuration(pr,outcome){
+  if(pr.tipo==='studente'){return outcome==='100'?'2 post dell’evocatore':'1 post dell’evocatore';}
+  if(pr.sapienza>0){return outcome==='100'?'5 post dell’evocatore':'';}
+  return outcome==='100'?'4 post dell’evocatore':'3 post dell’evocatore';
+}
+function medResolveDynamicPreset(key){
+  const pr=medPresetProfile();
+  let m=key.match(/^(manualita_passiva|manualita_attiva|omnis|nihil)_(100|66|33|partial)$/);
+  if(m){
+    const family=m[1],out=m[2];
+    const eff=(out==='partial'?'66':out);
+    const value=medCommonPhaseValue(pr,eff==='100'?'100':'partial');
+    if(value==null){return null;}
+    if(family==='manualita_passiva'){
+      return {group:'Conoscenze Medimagiche',label:'Manualità Medimagica — uso passivo · '+(out==='100'?'100%':'33-66%'),source:'Manualità Medimagica',condition:(out==='100'?'100%':'33-66%')+' · solo se il Rimedio contiene Strumenti Medimagici · una volta per Sintomo · uso passivo',kind:'possibilita',value:value,fatigue:.5,totalUses:null,phases:['terapia','chirurgia'],medCap:true};
+    }
+    if(family==='manualita_attiva'){
+      return {group:'Conoscenze Medimagiche',label:'Manualità Medimagica — uso attivo · '+(out==='100'?'100%':'33-66%'),source:'Manualità Medimagica',condition:(out==='100'?'100%':'33-66%')+' · solo se il Rimedio contiene Strumenti Medimagici · una volta per Sintomo · usa Azione/Azione Bonus',kind:'possibilita',value:value,fatigue:0,totalUses:null,phases:['terapia','chirurgia'],medCap:true};
+    }
+    if(family==='omnis'){
+      return {group:'Conoscenze Medimagiche',label:'Somministratore Omnis — '+(out==='100'?'100%':'33-66%'),source:'Somministratore Omnis',condition:(out==='100'?'100%':'33-66%')+' · solo se il Rimedio contiene Pozioni · una volta per Sintomo · Azione/Azione Bonus',kind:'possibilita',value:value,fatigue:1.5,totalUses:null,phases:['terapia','chirurgia'],medCap:true};
+    }
+    if(family==='nihil'){
+      const nf=medNihilFatigue(pr,out);
+      if(nf==null){return null;}
+      return {group:'Incantesimi Medimagici',label:'Nihil Malus — '+out+'%',source:'Nihil Malus',condition:out+'% · bonus attivo per '+medNihilDuration(pr,out)+' · Fatica pagata una sola volta all’evocazione',kind:'possibilita',value:value,fatigue:0,onceFatigue:nf,totalUses:null,phases:['diagnosi','terapia','chirurgia'],medCap:true,stackGroup:'nihil-malus'};
+    }
+  }
+  m=key.match(/^medimazoo_(scriber|kneazle|alastridente|duriccio)_(100|partial)$/);
+  if(m){
+    const creature=m[1],out=m[2],value=medCommonPhaseValue(pr,out==='100'?'100':'partial');
+    if(value==null){return null;}
+    const names={scriber:'Scriber Evoluto',kneazle:'Kneazle Fatale',alastridente:'Aiutante Alastridente',duriccio:'Capitan Duriccio'};
+    const phases=(creature==='scriber'||creature==='kneazle')?['diagnosi']:['terapia','chirurgia'];
+    return {group:'Conoscenze Medimagiche — Medimazoo',label:names[creature]+' — '+(out==='100'?'100%':'33-66%'),source:'Medimazoo — '+names[creature],condition:(out==='100'?'100%':'33-66%')+' · Creatura Medimagica disponibile',kind:'possibilita',value:value,fatigue:0,totalUses:null,phases:phases,medCap:true,stackGroup:'medimazoo-'+creature};
+  }
+  return null;
+}
+function medPresetObject(key){return MED_STATIC_PRESETS[key]||medResolveDynamicPreset(key);}
+function medPresetOptions(){
+  const pr=medPresetProfile(), groups={},order=[];
+  function add(k,p){if(!p)return;const g=p.group||'Altro';if(!groups[g]){groups[g]=[];order.push(g);}groups[g].push({k:k,p:p});}
+  Object.keys(MED_STATIC_PRESETS).forEach(function(k){add(k,MED_STATIC_PRESETS[k]);});
+  const outcomes=pr.adultoSap?['100']:['100','partial'];
+  outcomes.forEach(function(o){
+    add('manualita_passiva_'+o,medResolveDynamicPreset('manualita_passiva_'+o));
+    add('manualita_attiva_'+o,medResolveDynamicPreset('manualita_attiva_'+o));
+    add('omnis_'+o,medResolveDynamicPreset('omnis_'+o));
+    ['scriber','kneazle','alastridente','duriccio'].forEach(function(c){add('medimazoo_'+c+'_'+o,medResolveDynamicPreset('medimazoo_'+c+'_'+o));});
+  });
+  (pr.adultoSap?['100']:['100','66','33']).forEach(function(o){add('nihil_'+o,medResolveDynamicPreset('nihil_'+o));});
+  let h='<option value="">— Seleziona dal regolamento —</option>';
+  order.forEach(function(g){
+    h+='<optgroup label="'+esc(g)+'">';
+    groups[g].forEach(function(x){h+='<option value="'+x.k+'">'+esc(x.p.label)+'</option>';});
+    h+='</optgroup>';
+  });
+  return h;
+}
+function medRefreshPresetPickerUI(){
+  const sel=document.getElementById('g-effect-preset');
+  if(!sel)return;
+  const old=sel.value;sel.innerHTML=medPresetOptions();
+  if(Array.prototype.some.call(sel.options,function(o){return o.value===old;})){sel.value=old;}
+}
+
+function medRefreshPresetEditorsUI(){
+  const host=document.getElementById('g-effects-list');if(!host)return;
+  Array.prototype.forEach.call(host.querySelectorAll('.effect-editor[data-preset-key]'),function(row){
+    const key=row.dataset.presetKey,p=medPresetObject(key);
+    if(!p){row.remove();return;}
+    row.querySelector('.ef-source').value=p.source||'';
+    row.querySelector('.ef-condition').value=p.condition||'';
+    row.querySelector('.ef-kind').value=p.kind||'possibilita';
+    row.querySelector('.ef-value').value=String(p.value||0);
+    row.querySelector('.ef-fatigue').value=String(p.fatigue||0);
+    row.querySelector('.ef-cap').value=p.medCap===false?'generic':'med';
+    row.dataset.onceFatigue=String(p.onceFatigue||0);
+    const once=row.querySelector('.ef-once'),onceView=row.querySelector('.ef-once-view');
+    if(p.onceFatigue>0){once.classList.remove('hidden');onceView.value='-'+p.onceFatigue+' Fatica all’attivazione';}
+    else{once.classList.add('hidden');onceView.value='';}
+    const ph=row.querySelector('.ef-phase'),old=ph.value,allowed=p.phases||['diagnosi','terapia','chirurgia'];
+    ph.innerHTML='';allowed.forEach(function(x){const o=document.createElement('option');o.value=x;o.textContent=faseEffettoLabel(x);ph.appendChild(o);});
+    ph.value=allowed.indexOf(old)>=0?old:allowed[0];
+  });
+}
+
+
 function effectReservationCount(e){return e&&e.reservations?Object.keys(e.reservations).length:0;}
 function effectRemaining(e){
   if(e.totalUses==null){return Infinity;}
@@ -1873,6 +2022,7 @@ function effectRemaining(e){
 function effectCanUseForKey(e,key){
   if(!e || !e.enabled || e.phase==='generale'){return false;}
   if(key && ((e.reservations&&e.reservations[key])||(e.charges&&e.charges[key]))){return true;}
+  if(e.roleOnce && e.used>(e.initialUsed||0)){return false;}
   return effectRemaining(e)>0;
 }
 function findEffect(g,id){return g&&g.effects?g.effects.find(function(e){return e.id===id;}):null;}
@@ -1887,26 +2037,26 @@ function selectedEffectIds(container){
   return Array.prototype.map.call(container.querySelectorAll('input.med-effect-choice:checked'),function(x){return x.value;});
 }
 function effectValuesForAction(g,phase,ids,key){
-  let param=0,possRaw=0; const effects=[]; const unavailable=[];
+  let param=0,possRaw=0,medRaw=0; const effects=[]; const unavailable=[]; const stacks={}; const stackConflicts=[];
   (ids||[]).forEach(function(id){
     const e=findEffect(g,id);
     if(!e||e.phase!==phase||!e.enabled){return;}
     if(!effectCanUseForKey(e,key)){unavailable.push(e);return;}
     effects.push(e);
     if(e.kind==='parametro'){param+=e.value;}else{possRaw+=e.value;}
+    if(e.medCap){medRaw+=e.value;}
+    if(e.stackGroup){
+      if(stacks[e.stackGroup]){stackConflicts.push(e.stackGroup);}
+      stacks[e.stackGroup]=e;
+    }
   });
-  /* Il vecchio campo Conoscenze Medimagiche ammetteva al massimo +5 nella
-     singola fase. La separazione fra parametro e possibilità resta reale, ma
-     non può aggirare quel limite: se la selezione supera +5 l'azione viene
-     bloccata, invece di applicare solo una parte di un effetto e rendere il
-     riepilogo incoerente con quanto registrato. */
-  const totalRaw=param+possRaw;
-  return {param:param,possRaw:possRaw,poss:possRaw,totalRaw:totalRaw,overCap:totalRaw>5,effects:effects,unavailable:unavailable};
+  return {param:param,possRaw:possRaw,poss:possRaw,totalRaw:param+possRaw,medRaw:medRaw,overCap:medRaw>5,effects:effects,unavailable:unavailable,stackConflicts:stackConflicts};
 }
 function reserveEffects(g,phase,ids,key){
   const vals=effectValuesForAction(g,phase,ids,key);
-  if(vals.unavailable.length){return {ok:false,error:'Usi esauriti per: '+vals.unavailable.map(function(e){return e.source;}).join(', ')+'.',values:vals};}
-  if(vals.overCap){return {ok:false,error:'I bonus specifici selezionati sommano +'+vals.totalRaw+', ma il massimo regolamentare della singola fase è +5. Riduci la selezione prima di procedere.',values:vals};}
+  if(vals.unavailable.length){return {ok:false,error:'Usi esauriti o limite di role raggiunto per: '+vals.unavailable.map(function(e){return e.source;}).join(', ')+'.',values:vals};}
+  if(vals.stackConflicts.length){return {ok:false,error:'Non puoi applicare insieme più effetti dello stesso gruppo regolamentare ('+vals.stackConflicts.join(', ')+').',values:vals};}
+  if(vals.overCap){return {ok:false,error:'Le sole Conoscenze Medimagiche selezionate sommano +'+vals.medRaw+', ma il loro massimo regolamentare nella singola fase è +5. Gli Oggetti generici restano fuori da questo tetto.',values:vals};}
   vals.effects.forEach(function(e){
     if(!e.reservations){e.reservations={};} if(!e.charges){e.charges={};}
     if(!e.charges[key]){e.reservations[key]=true;}
@@ -1921,7 +2071,7 @@ function consumeEffects(g,phase,ids,key){
       if(e.totalUses!=null && e.used>=e.totalUses && !e.reservations[key]){return;}
       delete e.reservations[key]; e.charges[key]=true; e.used+=1; delta-=e.fatigue; g.fatica-=e.fatigue;
     }
-    snapshots.push({id:e.id,source:e.source,condition:e.condition,phase:e.phase,kind:e.kind,value:e.value,fatigue:e.fatigue});
+    snapshots.push({id:e.id,source:e.source,condition:e.condition,phase:e.phase,kind:e.kind,value:e.value,fatigue:e.fatigue,onceFatigue:e.onceFatigue||0,medCap:!!e.medCap});
   });
   return {delta:delta,effects:snapshots,param:vals.param,poss:vals.poss,possRaw:vals.possRaw};
 }
@@ -1940,9 +2090,12 @@ function effectLabel(e){
     return e.source+' · '+(e.condition||'sempre')+' → +'+e.value+' TECNICA · GENERALE';
   }
   const parts=[e.source+' · '+(e.condition||'quando applicato')+' → +'+e.value+' '+(e.kind==='parametro'?'TECNICA':'POSSIBILITÀ'),faseEffettoLabel(e.phase).toUpperCase()];
-  if(e.fatigue>0){parts.push('-'+e.fatigue+' FATICA');}
+  if(e.medCap){parts.push('TETTO +5 MEDIMAGICO');}else{parts.push('BONUS GENERICO / OGGETTO');}
+  if(e.onceFatigue>0){parts.push('-'+e.onceFatigue+' FATICA UNA TANTUM');}
+  if(e.fatigue>0){parts.push('-'+e.fatigue+' FATICA/USO');}
   if(e.totalUses!=null){const rem=Math.max(0,e.totalUses-e.used);parts.push(e.used+'/'+e.totalUses+' USI → '+rem+' RIMASTI');}
-  else if(e.used>0){parts.push(e.used+' USI CONSUMATI');}
+  else if(e.used>(e.initialUsed||0)){parts.push((e.used-(e.initialUsed||0))+' USI IN QUESTA CURA');}
+  if(e.roleOnce){parts.push('MAX 1 USO PER ROLE');}
   return parts.join(' · ');
 }
 function renderPhaseEffectChoices(host,g,phase,prefix,selected,key){
@@ -1952,24 +2105,39 @@ function renderPhaseEffectChoices(host,g,phase,prefix,selected,key){
   if(!list.length){host.innerHTML='<p class="muted">Nessun Oggetto/Conoscenza di '+faseEffettoLabel(phase)+' registrato per questo Guaritore.</p>';return;}
   host.innerHTML='<h5>Oggetti / Conoscenze applicabili</h5>'+list.map(function(e){
     const sameKey=key&&((e.reservations&&e.reservations[key])||(e.charges&&e.charges[key]));
-    const rem=effectRemaining(e); const disabled=!sameKey&&rem<=0; const checked=selected.indexOf(e.id)>=0&&!disabled;
-    const total=e.totalUses==null?'∞':e.totalUses; const rim=e.totalUses==null?'∞':Math.max(0,e.totalUses-e.used-effectReservationCount(e)); const meta=[e.condition||'Nessuna condizione specificata']; if(e.fatigue>0){meta.push('-'+e.fatigue+' Fatica/uso');} if(e.totalUses!=null){meta.push(e.used+'/'+total+' usi · '+rim+' disponibili');} else if(e.used>0){meta.push(e.used+' usi consumati · usi illimitati');}
+    const rem=effectRemaining(e); const disabled=!sameKey&&!effectCanUseForKey(e,key); const checked=selected.indexOf(e.id)>=0&&!disabled;
+    const total=e.totalUses==null?'∞':e.totalUses; const rim=e.totalUses==null?'∞':Math.max(0,e.totalUses-e.used-effectReservationCount(e));
+    const meta=[e.condition||'Nessuna condizione specificata',e.medCap?'tetto +5 Conoscenze Medimagiche':'fuori dal tetto +5 medimagico'];
+    if(e.onceFatigue>0){meta.push('-'+e.onceFatigue+' Fatica già conteggiata all’attivazione');}
+    if(e.fatigue>0){meta.push('-'+e.fatigue+' Fatica/uso');}
+    if(e.totalUses!=null){meta.push(e.used+'/'+total+' usi · '+rim+' disponibili');}
+    else if(e.used>(e.initialUsed||0)){meta.push((e.used-(e.initialUsed||0))+' usi in questa cura');}
+    if(e.roleOnce){meta.push('massimo 1 uso per role');}
     return '<label class="effect-choice'+(disabled?' exhausted':'')+'"><input class="med-effect-choice" type="checkbox" value="'+e.id+'" '+(checked?'checked ':'')+(disabled?'disabled ':'')+'data-prefix="'+esc(prefix||'')+'"><span class="effect-main"><b>'+esc(e.source)+'</b> → +'+e.value+' '+(e.kind==='parametro'?'Tecnica':'possibilità')+'<span class="effect-meta">'+esc(meta.join(' · '))+'</span></span></label>';
   }).join('');
 }
 function addEffectEditor(host,initial){
   initial=initial||{}; const row=document.createElement('div'); row.className='effect-editor'; row.dataset.effectEditor='1';
-  row.innerHTML='<div class="effect-grid">'+
+  if(initial.presetKey){row.dataset.presetKey=initial.presetKey;}
+  if(initial.stackGroup){row.dataset.stackGroup=initial.stackGroup;}
+  if(initial.roleOnce){row.dataset.roleOnce='1';}
+  if(initial.onceFatigue){row.dataset.onceFatigue=String(initial.onceFatigue);}
+  row.innerHTML=(initial.presetKey?'<div class="effect-preset-badge">Dal regolamento</div>':'')+
+  '<div class="effect-grid">'+
   '<div class="field"><label>Fonte / Oggetto / Conoscenza</label><input type="text" class="ef-source" placeholder="Es. Manualità Medimagica+"></div>'+
   '<div class="field"><label>Condizione / efficacia</label><input type="text" class="ef-condition" placeholder="Es. 100% Studente"></div>'+
   '<div class="field"><label>Fase</label><select class="ef-phase"><option value="generale">Generale</option><option value="diagnosi">Diagnosi</option><option value="terapia">Terapia</option><option value="chirurgia">Chirurgia</option></select></div>'+
   '<div class="field"><label>Tipo di bonus</label><select class="ef-kind"><option value="parametro">+ Tecnica (parametro)</option><option value="possibilita">+ Possibilità</option></select></div></div>'+
   '<div class="effect-grid"><div class="field"><label>Valore bonus</label><input type="number" class="ef-value" value="0" min="0" step="1"></div>'+
+  '<div class="field"><label>Categoria</label><select class="ef-cap"><option value="med">Conoscenza Medimagica — conta nel tetto +5</option><option value="generic">Oggetto / altra fonte — fuori dal tetto +5</option></select></div>'+
   '<div class="field ef-usage"><label>Fatica / uso</label><input type="number" class="ef-fatigue" value="0" min="0" step="0.5"></div>'+
-  '<div class="field ef-usage"><label>Usi disponibili</label><input type="number" class="ef-total" min="1" step="1" placeholder="vuoto = illimitati"></div>'+
-  '<div class="field ef-usage"><label>Usi già consumati</label><input type="number" class="ef-used" value="0" min="0" step="1"></div></div>'+
+  '<div class="field ef-usage"><label>Usi totali dell’effetto</label><input type="number" class="ef-total" min="1" step="1" placeholder="vuoto = illimitati"></div></div>'+
+  '<div class="effect-grid"><div class="field ef-usage"><label>Usi già consumati prima di questa cura</label><input type="number" class="ef-used" value="0" min="0" step="1"></div>'+
+  '<div class="field ef-once hidden"><label>Fatica una tantum già conteggiata</label><input type="text" class="ef-once-view" readonly></div></div>'+
   '<div class="effect-actions"><label class="effect-active"><input type="checkbox" class="ef-enabled" checked> Effetto disponibile / condizione soddisfatta</label><button type="button" class="btn small ghost ef-remove">Elimina</button></div>';
   host.appendChild(row); setupNumericInputs(row);
+
+  const preset=initial.presetKey?medPresetObject(initial.presetKey):null;
   if(initial.source)row.querySelector('.ef-source').value=initial.source;
   if(initial.condition)row.querySelector('.ef-condition').value=initial.condition;
   if(initial.phase)row.querySelector('.ef-phase').value=initial.phase;
@@ -1979,19 +2147,30 @@ function addEffectEditor(host,initial){
   if(initial.totalUses!=null)row.querySelector('.ef-total').value=String(initial.totalUses);
   if(initial.used!=null)row.querySelector('.ef-used').value=String(initial.used);
   if(initial.enabled===false)row.querySelector('.ef-enabled').checked=false;
+  row.querySelector('.ef-cap').value=initial.medCap===false?'generic':'med';
+
+  if(preset){
+    const allowed=preset.phases||['diagnosi','terapia','chirurgia']; const ph=row.querySelector('.ef-phase'); ph.innerHTML='';
+    allowed.forEach(function(x){const o=document.createElement('option');o.value=x;o.textContent=faseEffettoLabel(x);ph.appendChild(o);});
+    ph.value=allowed.indexOf(initial.phase)>=0?initial.phase:allowed[0];
+    ['.ef-source','.ef-condition','.ef-kind','.ef-value','.ef-fatigue','.ef-total','.ef-cap'].forEach(function(sel){row.querySelector(sel).disabled=true;});
+  }
+  if(initial.onceFatigue>0){
+    row.querySelector('.ef-once').classList.remove('hidden');
+    row.querySelector('.ef-once-view').value='-'+initial.onceFatigue+' Fatica all’attivazione';
+  }
+
   function updateMode(){
     const gen=row.querySelector('.ef-phase').value==='generale';
-    const valueEl=row.querySelector('.ef-value');
     row.querySelector('.ef-kind').value=gen?'parametro':row.querySelector('.ef-kind').value;
-    row.querySelector('.ef-kind').disabled=gen;
+    row.querySelector('.ef-kind').disabled=gen||!!preset;
+    row.querySelector('.ef-cap').disabled=gen||!!preset;
     Array.prototype.forEach.call(row.querySelectorAll('.ef-usage'),function(x){x.classList.toggle('hidden',gen);});
-    if(gen){
-      valueEl.removeAttribute('max');
+    if(gen && !preset){
       row.querySelector('.ef-fatigue').value='0';row.querySelector('.ef-total').value='';row.querySelector('.ef-used').value='0';
-    }else{
-      valueEl.setAttribute('max','5');
     }
-    valueEl.setCustomValidity(numberInputIsValid(valueEl)?'':'Inserire un valore numerico valido nei limiti previsti.');
+    const valueEl=row.querySelector('.ef-value'); valueEl.removeAttribute('max');
+    valueEl.setCustomValidity(numberInputIsValid(valueEl)?'':'Inserire un valore numerico valido.');
   }
   row.querySelector('.ef-phase').addEventListener('change',function(){updateMode();row.dispatchEvent(new CustomEvent('effectchange',{bubbles:true}));});
   Array.prototype.forEach.call(row.querySelectorAll('input,select'),function(el){el.addEventListener(el.type==='text'||el.type==='number'?'input':'change',function(){row.dispatchEvent(new CustomEvent('effectchange',{bubbles:true}));});});
@@ -2005,25 +2184,26 @@ function collectEffectEditors(host){
     const source=row.querySelector('.ef-source').value.trim(); const condition=row.querySelector('.ef-condition').value.trim();
     const phase=row.querySelector('.ef-phase').value; const kind=phase==='generale'?'parametro':row.querySelector('.ef-kind').value;
     const valEl=row.querySelector('.ef-value'); const fatigueEl=row.querySelector('.ef-fatigue'); const totalEl=row.querySelector('.ef-total'); const usedEl=row.querySelector('.ef-used');
-    const enabled=row.querySelector('.ef-enabled').checked;
+    const enabled=row.querySelector('.ef-enabled').checked; const medCap=phase!=='generale'&&row.querySelector('.ef-cap').value==='med';
     if(!source && valEl.value==='0'){return;}
     if(!source){error='Ogni bonus deve avere una Fonte / Oggetto / Conoscenza.';return;}
     if(!numberInputIsValid(valEl)){error='Controlla il valore del bonus di '+source+'.';return;}
     const value=Number(valEl.value); if(value<=0){error='Il bonus di '+source+' deve essere maggiore di 0.';return;}
-    if(phase!=='generale'&&value>5){error='Il bonus specifico di '+source+' non può superare +5, che è già il massimo regolamentare della singola fase.';return;}
+    if(medCap&&value>5){error='La singola Conoscenza Medimagica '+source+' non può superare +5 possibilità nella fase.';return;}
     let fatigue=0,totalUses=null,used=0;
     if(phase!=='generale'){
       if(fatigueEl.value!==''&&!numberInputIsValid(fatigueEl)){error='Controlla la Fatica per uso di '+source+'.';return;}
       fatigue=fatigueEl.value===''?0:Number(fatigueEl.value);
       if(totalEl.value!==''){
-        if(!numberInputIsValid(totalEl)){error='Controlla gli usi disponibili di '+source+'.';return;}
+        if(!numberInputIsValid(totalEl)){error='Controlla gli usi totali di '+source+'.';return;}
         totalUses=Number(totalEl.value);
       }
-      if(usedEl.value!==''&&!numberInputIsValid(usedEl)){error='Controlla gli usi consumati di '+source+'.';return;}
+      if(usedEl.value!==''&&!numberInputIsValid(usedEl)){error='Controlla gli usi già consumati di '+source+'.';return;}
       used=usedEl.value===''?0:Number(usedEl.value);
-      if(totalUses!=null&&used>totalUses){error='Gli usi consumati di '+source+' non possono superare gli usi disponibili.';return;}
+      if(totalUses!=null&&used>totalUses){error='Gli usi già consumati di '+source+' non possono superare gli usi totali.';return;}
     }
-    effects.push({id:nuovaIdEffetto(),source:source,condition:condition,phase:phase,kind:kind,value:value,fatigue:fatigue,totalUses:totalUses,used:used,initialUsed:used,enabled:enabled,reservations:{},charges:{}});
+    const onceFatigue=Number(row.dataset.onceFatigue||0)||0;
+    effects.push({id:nuovaIdEffetto(),source:source,condition:condition,phase:phase,kind:kind,value:value,fatigue:fatigue,onceFatigue:onceFatigue,totalUses:totalUses,used:used,initialUsed:used,enabled:enabled,medCap:medCap,stackGroup:row.dataset.stackGroup||'',roleOnce:row.dataset.roleOnce==='1',presetKey:row.dataset.presetKey||'',reservations:{},charges:{}});
   });
   return {ok:!error,error:error,effects:effects};
 }
@@ -2036,14 +2216,19 @@ function previewGeneralBonusFromEditors(host){
   return s;
 }
 function initialEffectsFatigue(effects){
-  return (effects||[]).reduce(function(s,e){return s+(e.phase!=='generale'?e.fatigue*e.used:0);},0);
+  /* Gli "usi già consumati" descrivono lo storico dell'oggetto, non Fatica da
+     riaddebitare nella cura corrente. Si addebita qui soltanto una Fatica
+     esplicitamente una tantum, come l'evocazione di Nihil Malus. */
+  return (effects||[]).reduce(function(s,e){return s+(e.enabled?(e.onceFatigue||0):0);},0);
 }
 function renderEffectsSummary(g,onlyUsed){
-  const list=(g.effects||[]).filter(function(e){return onlyUsed?((e.phase==='generale'&&e.enabled)||e.used>0):true;});
+  const list=(g.effects||[]).filter(function(e){
+    if(!onlyUsed)return true;
+    return (e.phase==='generale'&&e.enabled)||(e.onceFatigue>0&&e.enabled)||e.used>(e.initialUsed||0);
+  });
   if(!list.length){return '';}
-  return '<div class="effect-box"><h5>Oggetti / Conoscenze'+(onlyUsed?' applicati':' registrati')+'</h5>'+list.map(function(e){return '<div class="effect-summary">'+esc(effectLabel(e))+'</div>';}).join('')+'</div>';
+  return '<div class="effect-box"><h5>Oggetti / Conoscenze / Incantesimi'+(onlyUsed?' effettivamente usati':' registrati')+'</h5>'+list.map(function(e){return '<div class="effect-summary">'+esc(effectLabel(e))+'</div>';}).join('')+'</div>';
 }
-
 
 function profiloGuaritoreDaForm(){
 const tipo = document.querySelector('input[name="g-tipo"]:checked').value;
@@ -2101,6 +2286,7 @@ const tipo = document.querySelector('input[name="g-tipo"]:checked').value;
 Array.prototype.forEach.call(document.querySelectorAll('#g-tipo-seg label'), function(l){ l.classList.toggle('on', l.querySelector('input').checked); });
 document.getElementById('g-studente-fields').classList.toggle('hidden', tipo!=='studente');
 document.getElementById('g-adulto-fields').classList.toggle('hidden', tipo!=='adulto');
+medRefreshPresetPickerUI();medRefreshPresetEditorsUI();
 let sap = tipo==='studente' ? parseInt(document.getElementById('g-sap-stud').value,10)||0 : clampInt(document.getElementById('g-sap-adulto').value,0,25);
 const maxLiv = (tipo==='studente' || sap<=0) ? 1 : 5;
 ['g-diagnosta','g-terapista','g-chirurgo'].forEach(function(id){
@@ -2133,14 +2319,25 @@ body.innerHTML =
 '<p class="muted"><b>Studenti:</b> senza Diagnosta/Terapista usano base 7; con Diagnosta I o Terapista I usano base 9; la Chirurgia è possibile solo con Chirurgo I e usa base 7. <b>Adulti:</b> senza Sapienza possono acquistare il livello I; con Sapienza e Chirurgo, in Chirurgia si applica sempre il valore più favorevole. Gli Studenti non possono superare Sapienza I.</p>'+
 '<div class="prep-preview" id="g-profile-preview"></div>'+
 '<p class="muted" style="margin:10px 0 0"><b>Nota:</b> il voto nella singola Pozione prodotta serve soltanto quando si applicano gli effetti dell’incidente “Esplosione di un Calderone”; non modifica Diagnosi, Terapia o Chirurgia.</p></div>'+
-'<div class="prep-block"><div class="prep-title">Oggetti / Conoscenze del Guaritore</div>'+
-'<p class="muted">I bonus <b>Generali</b> modificano la Tecnica una sola volta e vengono applicati prima delle formule. I bonus di <b>Diagnosi, Terapia o Chirurgia</b> vengono invece scelti nella singola azione. Per questi ultimi puoi registrare Fatica e numero di usi; il tool li consumerà automaticamente. Per i bonus specifici della singola fase resta il massimo regolamentare di +5 complessivi, contando insieme bonus al parametro e bonus alle possibilità; se la selezione supera il limite, l’azione viene bloccata.</p>'+
-'<div id="g-effects-list"></div><button type="button" class="btn small ghost" id="g-effect-add">+ Aggiungi bonus</button><div id="g-effect-warn" class="step-warning"></div></div>'+
+'<div class="prep-block"><div class="prep-title">Oggetti / Conoscenze / Incantesimi del Guaritore</div>'+
+'<p class="muted">Scegli direttamente gli effetti regolamentati da Prezzario ed Enciclopedia. Il tool precompila valore, Fatica, usi e fase possibile. Le <b>Conoscenze Medimagiche</b> restano cumulabili fino a +5 nella singola fase; bonus generici come Amuleto della Fortuna, Manuali dell’Ars e Ragno Indagatore sono conteggiati separatamente secondo la propria regola.</p>'+
+'<div class="med-preset-picker"><div class="field"><label>Scegli dal regolamento</label><select id="g-effect-preset"></select></div><button type="button" class="btn small gold" id="g-effect-preset-add">+ Inserisci</button></div>'+
+'<p class="med-preset-help">Per Magi Biografia seleziona il bonus già presente in Scheda: la Fatica è stata spesa nella role in cui è stato preparato. Per Nihil Malus la Fatica di evocazione viene invece conteggiata una sola volta qui.</p>'+
+'<div id="g-effects-list"></div><button type="button" class="btn small ghost" id="g-effect-add">+ Aggiungi bonus manuale</button><div id="g-effect-warn" class="step-warning"></div></div>'+
 '<div style="margin-top:14px"><button type="button" class="btn gold" id="g-add">Conferma Guaritore</button></div></div>'+
 '<div id="g-lista" style="margin-top:16px"></div>';
 setupNumericInputs(body);
 const effectsHost=document.getElementById('g-effects-list');
-onPress(document.getElementById('g-effect-add'),function(){addEffectEditor(effectsHost);aggiornaFormProfiloGuaritore();});
+const effectPresetSel=document.getElementById('g-effect-preset');
+medRefreshPresetPickerUI();
+onPress(document.getElementById('g-effect-preset-add'),function(){
+  const key=effectPresetSel.value;if(!key){return;}
+  const p=medPresetObject(key);if(!p){return;}
+  if(p.stackGroup){Array.prototype.forEach.call(effectsHost.querySelectorAll('.effect-editor[data-stack-group="'+p.stackGroup+'"]'),function(r){r.remove();});}
+  addEffectEditor(effectsHost,{presetKey:key,source:p.source,condition:p.condition,phase:(p.phases||['diagnosi'])[0],kind:p.kind,value:p.value,fatigue:p.fatigue||0,onceFatigue:p.onceFatigue||0,totalUses:p.totalUses,used:0,medCap:p.medCap!==false,stackGroup:p.stackGroup||'',roleOnce:!!p.roleOnce});
+  effectPresetSel.value='';aggiornaFormProfiloGuaritore();
+});
+onPress(document.getElementById('g-effect-add'),function(){addEffectEditor(effectsHost,{medCap:true});aggiornaFormProfiloGuaritore();});
 effectsHost.addEventListener('effectchange',aggiornaFormProfiloGuaritore);
 ['g-sap-stud','g-sap-adulto','g-diagnosta','g-terapista','g-chirurgo'].forEach(function(id){
 const el=document.getElementById(id); el.addEventListener(id==='g-sap-adulto'?'input':'change',aggiornaFormProfiloGuaritore);
@@ -2261,7 +2458,7 @@ if(!medimagoState.guaritori.length){ body.innerHTML='<p class="muted">Torna al p
 let checks='';
 CLASSI.forEach(function(c){ checks += '<label class="pill" style="margin-right:8px;margin-bottom:8px;display:inline-flex"><input type="checkbox" class="diag-classe" value="'+c+'" style="margin-right:6px"'+(medimagoState.classiDiagnosi.has(c)?' checked':'')+'> '+c+'</label>'; });
 body.innerHTML =
-'<div class="phase-summary"><b>Diagnosi:</b> -2 Fatica per azione • da 1 a 5d40 • bonus specifici max +5</div>'+
+'<div class="phase-summary"><b>Diagnosi:</b> -2 Fatica per azione • da 1 a 5d40 • Conoscenze Medimagiche max +5</div>'+
 '<details class="rule-details"><summary>Regole, bonus e causa della malattia</summary><div class="rule-details-body">Una singola azione può comprendere un d40 per ciascuna Classificazione presente; nello stesso blocco la Fatica base si paga una sola volta. Un nuovo tentativo dopo un errore è una nuova azione.<br><br><b>Oggetti/Conoscenze:</b> i bonus generali alla Tecnica sono inclusi automaticamente. I bonus specifici si scelgono per la singola Classificazione; parametro prima, possibilità dopo, con massimo <b>+5 complessivi</b>. Usi e Fatica vengono consumati una sola volta per la stessa azione.<br><br><b>Causa/malattia:</b> se ancora sconosciuta, diventa nota individuando almeno il <b>60% dei Sintomi totali</b>. Questa percentuale non viene calcolata automaticamente perché il tool registra solo i Sintomi riconosciuti.</div></details>'+
 '<div style="margin:0 0 10px">'+checks+'</div>'+
 '<label><input type="checkbox" id="diag-nota"'+(medimagoState.causaNota?' checked':'')+'> Il PG malato o altri PG conoscono cosa è accaduto (+3 a ogni dado)</label>'+
@@ -2417,7 +2614,7 @@ const individuati=Array.from(medimagoState.sintomiIndividuati).filter(function(i
 let bulkHtml=''; if(individuati.length){bulkHtml='<div class="panel" style="background:#fff"><h4>Sintomi riconosciuti nella Diagnosi</h4><p class="muted">'+individuati.map(function(id){const x=SINTOMI_BY_ID[id];return x.c+' '+esc(x.n);}).join(' • ')+'</p><p class="note">Configura ogni Sintomo singolarmente: Guaritore, Pozione, Oggetti/Conoscenze e auto-cura possono cambiare da un trattamento all’altro.</p></div>';}
 body.innerHTML=bulkHtml+
 '<div class="phase-summary"><b>Terapia / Chirurgia:</b> fino a 3 Sintomi per post • tutti i Componenti richiesti • bonus specifici max +5</div>'+
-'<details class="rule-details"><summary>Regole complete del trattamento</summary><div class="rule-details-body">Devono essere disponibili tutte le Componenti del Rimedio; se è prevista un’alternativa esplicita, ne basta una. L’Acqua Distillata è sempre ottenibile autoconclusivamente. Tutti i passaggi di un singolo Sintomo possono essere eseguiti nello stesso post.<br><br>Se i passaggi richiedono Incantesimi o Tecniche, non serve un ulteriore tiro e non va aggiunta la loro normale Fatica: sono già compresi nel tiro e nella Fatica di Terapia/Chirurgia.<br><br>I bonus generali alla Tecnica sono automatici; gli Oggetti/Conoscenze specifici si scelgono qui. Il massimo dei bonus specifici è <b>+5 complessivi</b>: parametro prima, possibilità dopo.</div></details>'+
+'<details class="rule-details"><summary>Regole complete del trattamento</summary><div class="rule-details-body">Devono essere disponibili tutte le Componenti del Rimedio; se è prevista un’alternativa esplicita, ne basta una. L’Acqua Distillata è sempre ottenibile autoconclusivamente. Tutti i passaggi di un singolo Sintomo possono essere eseguiti nello stesso post.<br><br>Se i passaggi richiedono Incantesimi o Tecniche, non serve un ulteriore tiro e non va aggiunta la loro normale Fatica: sono già compresi nel tiro e nella Fatica di Terapia/Chirurgia.<br><br>I bonus generali alla Tecnica sono automatici; gli Oggetti/Conoscenze specifici si scelgono qui. Il massimo di <b>+5</b> riguarda le Conoscenze Medimagiche della fase; gli Oggetti generici restano separati. Parametro prima, possibilità dopo.</div></details>'+
 '<h4 style="margin-top:20px">Sintomi già aggiunti</h4><div id="cura-coda"></div>'+
 '<button type="button" class="btn ghost" id="cura-toggle-form" style="margin-top:20px">+ Aggiungi Sintomo già noto/comunicato dal Narratore o riconosciuto</button>'+
 '<div id="cura-form-wrap" class="hidden" style="margin-top:14px">'+
@@ -2532,12 +2729,18 @@ const body = document.getElementById('md_body3'); if(!body){ return; }
 if(!medimagoState.guaritori.length){body.innerHTML = '<p class="muted">Nessun Guaritore ancora aggiunto.</p>';return;}
 let html = '';
 medimagoState.guaritori.forEach(function(g){
-const effectFatigue=-(g.effects||[]).reduce(function(s,e){return s+(e.phase!=='generale'?e.fatigue*e.used:0);},0); const baseFatigue=g.fatica-effectFatigue;
+const effectFatigue=-(g.effects||[]).reduce(function(s,e){
+  const currentUses=Math.max(0,(e.used||0)-(e.initialUsed||0));
+  return s+(e.enabled?(e.onceFatigue||0):0)+(e.phase!=='generale'?e.fatigue*currentUses:0);
+},0); const baseFatigue=g.fatica-effectFatigue;
 html += '<div class="panel" style="background:#fff"><h4>' + esc(g.nome) + '</h4>' +
 '<div class="kv"><span>Tecnica effettiva</span><b>'+g.tecnica+(generalTechniqueBonus(g)?' + '+generalTechniqueBonus(g)+' = '+effectiveTechnique(g):'')+'</b></div>'+
 '<div class="kv"><span>Fatica procedure</span><b>' + baseFatigue + '</b></div>' +
 (effectFatigue?'<div class="kv"><span>Fatica Oggetti/Conoscenze</span><b>'+effectFatigue+'</b></div>':'')+
-'<div class="kv"><span>Fatica totale spesa</span><b>' + g.fatica + '</b></div>' + renderEffectsSummary(g,true);
+'<div class="kv"><span>Fatica totale spesa</span><b>' + g.fatica + '</b></div>' +
+'<div class="kv"><span>Bonus/Oggetti effettivamente usati</span><b>' + (g.effects||[]).filter(function(e){return (e.onceFatigue>0&&e.enabled)||e.used>(e.initialUsed||0)||(e.phase==='generale'&&e.enabled);}).length + '</b></div>' +
+'<div class="kv"><span>Complicazioni registrate</span><b>' + g.esiti.filter(function(e){return e.tipo==='Complicazione'&&e.esito==='fail';}).length + '</b></div>' +
+renderEffectsSummary(g,true);
 if(g.esiti.length){
 html += '<table class="tidy" style="margin-top:8px"><thead><tr><th>Fase</th><th>Bersaglio</th><th>Esito</th></tr></thead><tbody>';
 g.esiti.forEach(function(e){
