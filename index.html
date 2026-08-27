@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Medimagia — San Mungo</title>
 <!-- v41: import clinico ffmed consumato anche dall'URL; il refresh del Reparto Pazienti torna davvero vuoto -->
+<!-- v44: Incolla i Sintomi riconosce anche elenchi naturali separati da virgole e dalla congiunzione “e/ed” (es. A, B e C). -->
 <!-- v42: inserimento Sintomi rapido — incolla libera del Narratore con riconoscimento approssimativo; filtro per Classificazione + ricerca testuale in Pazienti e Medimaghi -->
 <!-- v40: import clinico allineato al tool Riuscita/Incantesimi/Piante/Creature/Pozioni — Salute, Sintomi e bersaglio -->
 <!-- v39: dadi Diagnosi/Terapia/Chirurgia riallineati a medimagia5; sessioni Medimaghi migrate ai nuovi valori -->
@@ -930,7 +931,7 @@ function risolviSintomoApprossimativo(raw,classeForzata){
   return {match:(best.score>=soglia&&!ambiguo)?best.s:null,classe:classe,query:query,score:best.score,best:best.s,ambiguous:!!ambiguo};
 }
 function analizzaSintomiNarratore(testo){
-  var chunks=String(testo||'').replace(/\r/g,'\n').split(/\n|[;•|]+|,(?=\s*[A-Za-zÀ-ÿXx])/);
+  var chunks=String(testo||'').replace(/\r/g,'\n').split(/\n|[;•|]+|,(?=\s*[A-Za-zÀ-ÿXx])|\s+(?:e|ed)\s+(?=[A-Za-zÀ-ÿ])/i);
   var classeContesto='',matches=[],unmatched=[],seen={};
   chunks.forEach(function(raw){
     raw=String(raw||'').trim();
