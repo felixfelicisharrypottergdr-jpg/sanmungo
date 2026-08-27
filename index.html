@@ -6,6 +6,7 @@
 <!-- v41: import clinico ffmed consumato anche dall'URL; il refresh del Reparto Pazienti torna davvero vuoto -->
 <!-- v44: Incolla i Sintomi riconosce anche elenchi naturali separati da virgole e dalla congiunzione “e/ed” (es. A, B e C). -->
 <!-- v48: migrazione sicura delle sessioni v46 — le vecchie fonti OFFGame automatiche tornano “da confermare”; i nuovi salvataggi ricordano la conferma esplicita. -->
+<!-- v51: Diagnosi più leggibile; selezioni evidenziate; flusso Terapia/Chirurgia esplicito con tiri pronti, esito e Complicazione. -->
 <!-- v50: Diagnosi divisa in due tendine autonome: Sintomi già noti ONGame e Sintomi da scoprire; i dadi vengono generati esclusivamente dalle Classificazioni dei Sintomi da scoprire. -->
 <!-- v49: separati Sintomi conosciuti OFFGame dal giocatore e Sintomi già noti ONGame al PG; i Sintomi diventano noti ONGame solo con Diagnosi riuscita o conferma esplicita “Già noti ONGame”. -->
 <!-- v47: ritorno ai Guaritori senza effetto “dati spariti”; Sintomi conosciuti OFFGame in bozza finché non confermati esplicitamente; Diagnosi non saltata senza conferma. -->
@@ -684,7 +685,18 @@ body{
 .diag-known-panel{margin-bottom:18px}
 .diag-known-panel>.rule-details{margin:9px 0}
 .diag-known-panel .sym-list{max-height:280px}
-.diag-known-state{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px}
+.diag-known-state{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px}
+.diag-entry-heading{display:flex;align-items:center;gap:7px;margin:4px 0 8px;font-weight:700;color:#7f2d36;font-size:15px}
+.diag-entry-heading i{font-size:13px}
+.diag-manual-heading{display:flex;align-items:center;gap:8px;margin:16px 0 9px;padding-top:13px;border-top:1px solid var(--line);font-weight:700;color:#7f2d36;font-size:15px}
+.diag-selected-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 10px 7px 7px;border:1px solid #8fb79a;border-radius:999px;background:#edf7ef;box-shadow:0 1px 0 rgba(36,71,55,.06)}
+.diag-selected-chip .class-badge{min-width:44px;font-size:13px;padding:5px 8px}
+.diag-selected-chip .diag-symptom-name{font-weight:700;color:#244737;font-size:14px}
+.diag-class-chip{display:inline-flex;align-items:center;padding:4px;border:1px solid #8fb79a;border-radius:999px;background:#edf7ef}
+.diag-class-chip .class-badge{font-size:13px;padding:5px 9px}
+.treatment-flow-note{margin:14px 0;padding:11px 13px;border-left:4px solid #943943;border-radius:0 9px 9px 0;background:#e8f2e9;color:#315c46;font-size:13px;line-height:1.5}
+.treatment-dice-title{margin:13px 0 5px;font-family:'magic','Palatino Linotype','Book Antiqua',Georgia,serif;font-size:18px;color:#7f2d36}
+.treatment-result-help{margin:0 0 7px;color:var(--sage);font-size:12.5px;line-height:1.4}
 .cura-import-groups{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 .cura-import-group{padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
 .cura-import-group h4{margin:0 0 8px;color:#7f2d36}
@@ -2973,14 +2985,18 @@ body.innerHTML =
 '<p class="step-intro">Prima indica quali Sintomi sono già noti ONGame al Medimago e quali devono ancora essere scoperti. I dadi di Diagnosi vengono preparati esclusivamente per i Sintomi inseriti in <b>Sintomi da scoprire</b>.</p>'+
 '<details class="rule-details diag-known-ongame"><summary>Sintomi già noti ONGame</summary><div class="rule-details-body">'+
 '<p class="muted" style="margin-top:0">Usa questa sezione solo se il personaggio conosce già ONGame il Sintomo: per esempio perché lo ha comunicato il Narratore, è stato riconosciuto in una quest o era già stato diagnosticato in una role precedente. Questi Sintomi <b>non generano dadi di Diagnosi</b>.</p>'+
-'<div class="narrator-paste-box" style="margin:0 0 12px"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi</h4><textarea id="diag-known-paste" placeholder="Esempio: Graffi, Vertigini e Debolezza Muscolare\noppure: XX: fratture, vertigine"></textarea>'+
+'<div class="diag-entry-heading"><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi</div>'+
+'<div class="narrator-paste-box" style="margin:0 0 12px"><textarea id="diag-known-paste" placeholder="Esempio: Graffi, Vertigini e Debolezza Muscolare\noppure: XX: fratture, vertigine"></textarea>'+
 '<div class="narrator-paste-actions"><button type="button" class="btn small gold" id="diag-known-paste-apply">Riconosci e aggiungi</button><span class="muted">Nomi approssimativi e X/xx/Xx sono accettati.</span></div><div id="diag-known-paste-result" class="narrator-paste-result"></div></div>'+
+'<div class="diag-manual-heading"><i class="fa-solid fa-list-check" aria-hidden="true"></i> Aggiungi manualmente</div>'+
 '<div class="sym-entry-tools"><div class="field"><label>1. Classificazione</label><select id="diag-known-class">'+classOptions+'</select></div><div class="field searchbar" style="margin-bottom:0"><label>2. Scrivi o cerca un Sintomo</label><input type="text" id="diag-known-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div></div><div class="sym-list" id="diag-known-list"></div>'+
 '<div id="diag-known-summary" class="diag-known-state"></div></div></details>'+
 '<details class="rule-details diag-to-discover"><summary>Sintomi da scoprire</summary><div class="rule-details-body">'+
 '<p class="muted" style="margin-top:0">Inserisci qui i Sintomi che conosci come giocatore ma che il Medimago <b>non conosce ancora ONGame</b>. Soltanto questi Sintomi determinano le Classificazioni per cui verranno generati i dadi di Diagnosi.</p>'+
-'<div class="narrator-paste-box" style="margin:0 0 12px"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi</h4><textarea id="diag-discover-paste" placeholder="Esempio: Graffi, Vertigini e Debolezza Muscolare\noppure: XX: fratture, vertigine"></textarea>'+
+'<div class="diag-entry-heading"><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi</div>'+
+'<div class="narrator-paste-box" style="margin:0 0 12px"><textarea id="diag-discover-paste" placeholder="Esempio: Graffi, Vertigini e Debolezza Muscolare\noppure: XX: fratture, vertigine"></textarea>'+
 '<div class="narrator-paste-actions"><button type="button" class="btn small gold" id="diag-discover-paste-apply">Riconosci e aggiungi</button><span class="muted">Nomi approssimativi e X/xx/Xx sono accettati.</span></div><div id="diag-discover-paste-result" class="narrator-paste-result"></div></div>'+
+'<div class="diag-manual-heading"><i class="fa-solid fa-list-check" aria-hidden="true"></i> Aggiungi manualmente</div>'+
 '<div class="sym-entry-tools"><div class="field"><label>1. Classificazione</label><select id="diag-discover-class">'+classOptions+'</select></div><div class="field searchbar" style="margin-bottom:0"><label>2. Scrivi o cerca un Sintomo</label><input type="text" id="diag-discover-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div></div><div class="sym-list" id="diag-discover-list"></div>'+
 '<div id="diag-discover-summary" class="diag-known-state"></div></div></details>'+
 '<div class="phase-summary"><b>Diagnosi:</b><div>• da 1 a 5d40, uno per ogni Classificazione dei Sintomi da scoprire</div><div>• -2 Fatica per azione (0 con Sapienza 25)</div><div>• auto-diagnosi -20%</div><div>• autoconclusiva da 40</div><div>• Conoscenze Medimagiche max +5</div></div>'+
@@ -2993,13 +3009,13 @@ body.innerHTML =
 const knownList=document.getElementById('diag-known-list'),knownSearch=document.getElementById('diag-known-search'),knownClass=document.getElementById('diag-known-class');
 const discoverList=document.getElementById('diag-discover-list'),discoverSearch=document.getElementById('diag-discover-search'),discoverClass=document.getElementById('diag-discover-class');
 function markDiagRowsStale(msg){ const dadi=document.getElementById('diag-dadi'); if(dadi&&dadi.innerHTML.trim()){dadi.innerHTML='<div class="note"><b>'+msg+'</b> Genera nuovamente le righe di Diagnosi per avere controlli coerenti. Gli eventuali tiri già registrati restano nello storico.</div>';}}
-function refreshClassi(){ricalcolaClassiDiagnosiDaSintomi();const host=document.getElementById('diag-auto-classes');if(!host)return;const cs=Array.from(medimagoState.classiDiagnosi);host.innerHTML=cs.length?('<b>Classificazioni da diagnosticare:</b> '+cs.map(function(c){return '<span class="pill"><span class="class-badge class-'+c+'">'+c+'</span></span>';}).join('')):'<span class="muted">Nessun Sintomo da scoprire selezionato: non verrà generato alcun dado di Diagnosi.</span>';}
+function refreshClassi(){ricalcolaClassiDiagnosiDaSintomi();const host=document.getElementById('diag-auto-classes');if(!host)return;const cs=Array.from(medimagoState.classiDiagnosi);host.innerHTML=cs.length?('<b>Classificazioni da diagnosticare:</b> '+cs.map(function(c){return '<span class="diag-class-chip"><span class="class-badge class-'+c+'">'+c+'</span></span>';}).join('')):'<span class="muted">Nessun Sintomo da scoprire selezionato: non verrà generato alcun dado di Diagnosi.</span>';}
 function refreshSummaries(){
  const knownHost=document.getElementById('diag-known-summary'),discoverHost=document.getElementById('diag-discover-summary');
  const known=Array.from(medimagoState.sintomiIndividuati).filter(function(id){return SINTOMI_BY_ID[id];});
  const pending=sintomiDaScoprirePendenti();
- if(knownHost){knownHost.innerHTML=known.length?('<b>Già noti ONGame:</b> '+known.map(function(id){const s=SINTOMI_BY_ID[id];return '<span class="pill"><span class="class-badge class-'+s.c+'">'+s.c+'</span> '+esc(s.n)+'</span>';}).join('')):'<span class="muted">Nessun Sintomo indicato come già noto ONGame.</span>';}
- if(discoverHost){discoverHost.innerHTML=pending.length?('<b>Da scoprire:</b> '+pending.map(function(id){const s=SINTOMI_BY_ID[id];return '<span class="pill"><span class="class-badge class-'+s.c+'">'+s.c+'</span> '+esc(s.n)+'</span>';}).join('')):'<span class="muted">Nessun Sintomo da scoprire selezionato.</span>';}
+ if(knownHost){knownHost.innerHTML=known.length?('<b>Già noti ONGame:</b> '+known.map(function(id){const s=SINTOMI_BY_ID[id];return '<span class="diag-selected-chip"><span class="class-badge class-'+s.c+'">'+s.c+'</span><strong class="diag-symptom-name">'+esc(s.n)+'</strong></span>';}).join('')):'<span class="muted">Nessun Sintomo indicato come già noto ONGame.</span>';}
+ if(discoverHost){discoverHost.innerHTML=pending.length?('<b>Da scoprire:</b> '+pending.map(function(id){const s=SINTOMI_BY_ID[id];return '<span class="diag-selected-chip"><span class="class-badge class-'+s.c+'">'+s.c+'</span><strong class="diag-symptom-name">'+esc(s.n)+'</strong></span>';}).join('')):'<span class="muted">Nessun Sintomo da scoprire selezionato.</span>';}
  refreshClassi();
 }
 function recalcOngameClass(c){impostaFonteClasseSemplice(c,'ongame',classeHaSintomiFonte(c,'ongame'));}
@@ -3133,18 +3149,19 @@ function statoImportCura(sid){
 }
 function gruppoImportCura(title,ids){
  if(!ids.length){return '<div class="cura-import-group"><h4>'+title+'</h4><p class="muted">Nessun Sintomo riconosciuto per questa fase.</p></div>';}
- return '<div class="cura-import-group"><h4>'+title+'</h4>'+ids.map(function(id){const s=SINTOMI_BY_ID[id],st=statoImportCura(id);return '<div class="cura-import-row"><span class="class-badge class-'+s.c+'">'+s.c+'</span><span class="nm">'+esc(s.n)+'</span><span class="status '+st.cls+'">'+st.txt+'</span>'+(st.button?'<button type="button" class="btn small ghost cura-import-config" data-sid="'+id+'">Configura</button>':'')+'</div>';}).join('')+'</div>';
+ return '<div class="cura-import-group"><h4>'+title+'</h4>'+ids.map(function(id){const s=SINTOMI_BY_ID[id],st=statoImportCura(id);return '<div class="cura-import-row"><span class="class-badge class-'+s.c+'">'+s.c+'</span><span class="nm">'+esc(s.n)+'</span><span class="status '+st.cls+'">'+st.txt+'</span>'+(st.button?'<button type="button" class="btn small gold cura-import-config" data-sid="'+id+'"><i class="fa-solid fa-dice" aria-hidden="true"></i> Prepara il tiro</button>':'')+'</div>';}).join('')+'</div>';
 }
 const terapiaInd=individuati.filter(function(id){return !isGrave(SINTOMI_BY_ID[id].c);});
 const chirurgiaInd=individuati.filter(function(id){return isGrave(SINTOMI_BY_ID[id].c);});
 let bulkHtml='';
-if(individuati.length){bulkHtml='<div class="panel" style="background:#fff"><h4>Sintomi noti ONGame</h4><p class="muted">I Sintomi riconosciuti con successo in Diagnosi o dichiarati già noti ONGame sono già divisi nella fase corretta. Non devi cercarli o reinserirli: usa “Configura” per impostare Guaritore, Componenti, eventuale Pozione e bonus.</p><div class="cura-import-groups">'+gruppoImportCura('Terapia · X–XXX',terapiaInd)+gruppoImportCura('Chirurgia · XXXX–XXXXX',chirurgiaInd)+'</div></div>';}
+if(individuati.length){bulkHtml='<div class="panel" style="background:#fff"><h4>Sintomi noti ONGame</h4><p class="muted">I Sintomi riconosciuti con successo in Diagnosi o dichiarati già noti ONGame sono già divisi nella fase corretta. Non devi cercarli o reinserirli: premi <b>“Prepara il tiro”</b> per impostare Guaritore, Componenti, eventuale Pozione e bonus. Subito dopo compariranno il dado già compilato da copiare e la casella per il risultato.</p><div class="cura-import-groups">'+gruppoImportCura('Terapia · X–XXX',terapiaInd)+gruppoImportCura('Chirurgia · XXXX–XXXXX',chirurgiaInd)+'</div></div>';}
 else{bulkHtml='<div class="panel" style="background:#fff"><h4>Sintomi noti ONGame</h4><p class="muted">Nessun Sintomo è ancora noto ONGame. Puoi riconoscerlo con la Diagnosi, dichiararlo già noto ONGame oppure usare l’inserimento manuale più sotto.</p></div>';}
 body.innerHTML=bulkHtml+
 '<div class="phase-summary-lists"><div class="phase-summary-list"><strong>Terapia</strong><div>• 1d40</div><div>• -0,5 Fatica per Sintomo</div><div>• Auto-cura -30%</div><div>• Autoconclusiva da 40</div></div>'+
 '<div class="phase-summary-list"><strong>Chirurgia</strong><div>• 1d35</div><div>• -1 Fatica per Sintomo</div><div>• Auto-cura -40%</div><div>• Autoconclusiva da 35</div><div>• Sapienza 25: Fatica base 0</div></div></div>'+
 '<details class="rule-details"><summary>Regole complete del trattamento</summary><div class="rule-details-body">Devono essere disponibili tutte le Componenti del Rimedio; se è prevista un’alternativa esplicita, ne basta una. L’Acqua Distillata è sempre ottenibile autoconclusivamente. Tutti i passaggi di un singolo Sintomo possono essere eseguiti nello stesso post.<br><br>Se i passaggi richiedono Incantesimi o Tecniche, non serve un ulteriore tiro e non va aggiunta la loro normale Fatica: sono già compresi nel tiro e nella Fatica di Terapia/Chirurgia.<br><br>I bonus generali alla Tecnica sono automatici; gli Oggetti/Conoscenze specifici si scelgono qui. Il massimo di <b>+5</b> riguarda le Conoscenze Medimagiche della fase; gli Oggetti generici restano separati. Parametro prima, possibilità dopo.</div></details>'+
-'<h4 style="margin-top:20px">Trattamenti</h4><div id="cura-coda"></div>'+
+'<div class="treatment-flow-note"><b>Come si risolve la Cura:</b> prepara il tiro del Sintomo, copia il dado nel forum e inserisci qui il risultato. Se riesce, il Sintomo viene segnato come curato. Se fallisce, il tool mostra subito la <b>Complicazione da applicare al PG</b> e rende disponibile il nuovo tentativo.</div>'+
+'<h4 style="margin-top:20px">Tiri di Terapia e Chirurgia</h4><div id="cura-coda"></div>'+
 '<button type="button" class="btn ghost" id="cura-toggle-form" style="margin-top:20px">+ Aggiungi manualmente un altro Sintomo</button>'+
 '<div id="cura-form-wrap" class="hidden" style="margin-top:14px">'+
 '<div class="sym-entry-tools"><div class="field"><label>1. Classificazione</label><select id="cura-class-filter"><option value="">Tutte le Classificazioni</option>'+CLASSI.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('')+'</select></div>'+
@@ -3155,7 +3172,7 @@ body.innerHTML=bulkHtml+
 '<div class="grid2" style="margin-top:12px"><div class="field"><label><input type="checkbox" id="cura-usa-pozione"> Il ramo di Rimedio scelto usa effettivamente una Pozione</label><select id="cura-pozione" disabled><option value="no">Forza Standard / nessun bonus</option><option value="oop">Forza Oltre Ogni Previsione (+1)</option><option value="ecc">Forza Eccezionale (+2)</option></select><span class="spiega-inline">Seleziona la Forza della dose usata, non un voto scolastico del PG.</span></div>'+
 '<label style="align-self:center"><input type="checkbox" id="cura-selfcure"> Il Guaritore cura se stesso</label></div>'+
 '<div class="effect-box" id="cura-effects"></div><div id="cura-effect-warn" class="step-warning"></div>'+
-'<div id="cura-anteprima" style="margin:12px 0"></div><div id="cura-form-warn" class="step-warning"></div><button type="button" class="btn gold" id="cura-add">Aggiungi Sintomo da curare</button></div>';
+'<div class="treatment-dice-title">Dado calcolato</div><p class="treatment-result-help">Puoi già copiare il dado. Dopo aver confermato Componenti e configurazione, il tiro verrà aggiunto qui sopra fra i Tiri di Terapia e Chirurgia e il risultato verrà registrato nel caso.</p><div id="cura-anteprima" style="margin:8px 0 12px"></div><div id="cura-form-warn" class="step-warning"></div><button type="button" class="btn gold" id="cura-add">Prepara il tiro</button></div>';
 setupNumericInputs(body);
 onPress(document.getElementById('cura-toggle-form'),function(){const w=document.getElementById('cura-form-wrap'),bt=document.getElementById('cura-toggle-form');w.classList.toggle('hidden');bt.textContent=w.classList.contains('hidden')?'+ Aggiungi manualmente un altro Sintomo':'− Nascondi il modulo';});
 const wrap=document.getElementById('cura-coda'); if(!medimagoState.coda.length){wrap.innerHTML='<p class="muted" id="cura-coda-vuota">Nessun Sintomo aggiunto ancora.</p>';}else{medimagoState.coda.forEach(function(item){aggiungiCardCura(item,item.risultato==null?null:item.risultato);});}
@@ -3178,8 +3195,9 @@ function refreshEffects(preserve){
 medimagoState.refreshCuraEffects=function(){refreshEffects(true);aggiornaAnteprima();};
 function aggiornaAnteprima(){
 const sid=curaSel.value,gid=document.getElementById('cura-guaritore').value,poz=document.getElementById('cura-pozione').value,usaPozione=document.getElementById('cura-usa-pozione').checked,self=document.getElementById('cura-selfcure').checked,effectIds=selectedEffectIds(document.getElementById('cura-effects')),ss=SINTOMI_BY_ID[sid];
-const rimedio=document.getElementById('cura-rimedio'),box=document.getElementById('cura-anteprima');
-if(!ss){rimedio.innerHTML='<span class="muted">Seleziona un Sintomo dai filtri sopra.</span>';box.innerHTML='';return;}
+const rimedio=document.getElementById('cura-rimedio'),box=document.getElementById('cura-anteprima'),addBtn=document.getElementById('cura-add');
+if(!ss){rimedio.innerHTML='<span class="muted">Seleziona un Sintomo dai filtri sopra.</span>';box.innerHTML='';if(addBtn){addBtn.textContent='Prepara il tiro';}return;}
+if(addBtn){addBtn.textContent='Prepara il tiro di '+(isGrave(ss.c)?'Chirurgia':'Terapia');}
 rimedio.innerHTML='<b>Rimedio ONGame:</b> '+esc(ss.r)+'<br><b>Passaggi:</b> '+esc(ss.p); const info=calcolaDadoCura(sid,gid,poz,usaPozione,self,effectIds,''),box2=document.getElementById('cura-anteprima');box2.innerHTML='<div id="cura-anteprima-dado"></div>';const target=document.getElementById('cura-anteprima-dado');
 if(info.blocked){target.innerHTML='<div class="result-box grave"><b>Nessun tiro di cura diretto.</b><br>'+esc(info.failText)+'</div>';}else if(info.forceFail){renderDiceCheck(target,{forceFail:true,failText:info.failText,onConfirm:function(){}});}else{renderDiceCheck(target,{faces:info.faces,autoAtOrAbove:true,addends:info.addends,successLabel:info.successLabel,onConfirm:function(){}});}
 }
@@ -3194,7 +3212,7 @@ Array.prototype.forEach.call(body.querySelectorAll('.cura-import-config'),functi
   const form=document.getElementById('cura-form-wrap'),toggle=document.getElementById('cura-toggle-form');
   if(form.classList.contains('hidden')){form.classList.remove('hidden');toggle.textContent='− Nascondi il modulo';}
   curaClassFilter.value=ss.c;curaSearch.value='';aggiornaOpzioniCura();curaSel.value=sid;refreshEffects(false);aggiornaAnteprima();
-  const warn=document.getElementById('cura-form-warn');if(warn){warn.textContent='Sintomo già noto ONGame: completa soltanto la configurazione del trattamento.';}
+  const warn=document.getElementById('cura-form-warn');if(warn){warn.textContent='Sintomo già noto ONGame: completa la configurazione e premi “Prepara il tiro”. Il dado copiabile e la casella del risultato compariranno nella sezione Tiri di Terapia e Chirurgia.';}
   form.scrollIntoView({behavior:'smooth',block:'start'});
 });});
 
@@ -3263,6 +3281,7 @@ warn.textContent='';aggiornaTutteLeComplicazioniCura();const inp=document.queryS
 }
 function renderComplicazioneDaStato(container,item,ss){
 if(!container){return;}
+if(item.esito==='ok'||item.esito==='auto'){container.innerHTML='<div class="result-box ok" style="margin-top:10px"><b>Trattamento riuscito.</b><br>'+esc(ss.n)+' è stato curato.</div>';return;}
 if(item.esito!=='fail'){container.innerHTML='';return;}
 const reg=regolaComplicazioneSintomo(ss);
 if(reg.tipo==='nessuna'){
@@ -3294,9 +3313,10 @@ function aggiungiCardCura(item, risultatoPrecompilato){
 const wrap=document.getElementById('cura-coda'),info=calcolaDadoCura(item.sid,item.guaritoreId,item.pozione,item.usaPozione,item.selfcure,item.effectIds||[],item.uid),ss=info.s,g=info.g;
 const card=document.createElement('div');card.className='panel';card.style.background='#fff';card.id='cura-card-'+item.uid;
 const effectsHtml=(item.entryRef.effetti&&item.entryRef.effetti.length)?'<br><b>Oggetti/Conoscenze:</b> '+item.entryRef.effetti.map(function(e){return esc(e.source)+' (+'+e.value+' '+(e.kind==='parametro'?'Tecnica':'possibilità')+(e.fatigue>0?', -'+e.fatigue+' Fatica':'')+')';}).join(' • '):'';
-card.innerHTML='<div class="queue-item" style="border:none;padding:0;margin:0"><span class="class-badge class-'+ss.c+'">'+ss.c+'</span><span>'+esc(ss.n)+'</span><span class="muted">'+(info.grave?'Chirurgia':'Terapia')+'</span><span class="pill">'+esc(g.nome)+'</span><span class="x">×</span></div>'+
+card.innerHTML='<div class="queue-item" style="border:none;padding:0;margin:0"><span class="class-badge class-'+ss.c+'">'+ss.c+'</span><strong style="font-size:15px">'+esc(ss.n)+'</strong><span class="muted">'+(info.grave?'Chirurgia':'Terapia')+'</span><span class="pill">'+esc(g.nome)+'</span><span class="x">×</span></div>'+
 '<div class="muted" style="margin-top:7px"><b>Rimedio:</b> '+esc(ss.r)+'<br><b>Passaggi:</b> '+esc(ss.p)+(item.usaPozione && item.pozione!=='no'?'<br><b>Bonus Pozione:</b> '+(item.pozione==='oop'?'+1 Oltre Ogni Previsione':'+2 Eccezionale'):'')+effectsHtml+'</div><div id="cura-warn-'+item.uid+'"></div>'+
-'<div id="cura-dice-'+item.uid+'" style="margin-top:8px"></div><div id="cura-comp-'+item.uid+'"></div>';wrap.appendChild(card);
+'<div class="treatment-dice-title">Dado di '+(info.grave?'Chirurgia':'Terapia')+'</div><p class="treatment-result-help">Copia il dado, lancialo sul forum e inserisci il risultato nella casella. L’esito viene elaborato automaticamente.</p>'+
+'<div id="cura-dice-'+item.uid+'" style="margin-top:6px"></div><div id="cura-comp-'+item.uid+'"></div>';wrap.appendChild(card);
 onPress(card.querySelector('.x'),function(){
 if(item.faticaAddebitata){g.fatica-=item.entryRef.fatica;releaseEffects(g,item.effectPhase,item.effectIds||[],item.uid,false);}else{releaseEffects(g,item.effectPhase,item.effectIds||[],item.uid,false);}
 const ix=g.esiti.indexOf(item.entryRef);if(ix>=0)g.esiti.splice(ix,1);const pos=medimagoState.coda.indexOf(item);if(pos>=0)medimagoState.coda.splice(pos,1);card.remove();aggiornaTutteLeComplicazioniCura();if(typeof medimagoState.refreshCuraEffects==='function'){medimagoState.refreshCuraEffects();}if(!medimagoState.coda.length)wrap.innerHTML='<p class="muted" id="cura-coda-vuota">Nessun Sintomo aggiunto ancora.</p>';
