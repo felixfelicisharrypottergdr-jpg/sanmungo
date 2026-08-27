@@ -98,7 +98,10 @@ background:#fff; font-family:Georgia,'Iowan Old Style',serif; font-size:16px; co
 input[type=checkbox]{transform:scale(1.15); margin-right:6px}
 .field{margin-bottom:14px}
 textarea{width:100%;min-height:96px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:#fff;font-family:Georgia,'Iowan Old Style',serif;font-size:15px;color:var(--ink);resize:vertical}
-.sym-entry-tools{display:grid;grid-template-columns:minmax(160px,.7fr) minmax(220px,1.3fr);gap:12px;align-items:end;margin:12px 0}
+.sym-entry-tools{display:grid;grid-template-columns:minmax(160px,.7fr) minmax(220px,1.3fr);gap:12px;align-items:stretch;margin:12px 0}
+.sym-entry-tools .field{display:flex;flex-direction:column;justify-content:flex-start;margin-bottom:0}
+.sym-entry-tools .field label{min-height:1.2em}
+.sym-entry-tools select,.sym-entry-tools input[type="text"],.sym-entry-tools input[type="search"],.sym-entry-tools input[type="number"]{height:54px}
 .narrator-paste-box{margin:10px 0 14px;padding:12px 14px;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;background:#f8fbf8}
 .narrator-paste-box h4{margin:0 0 6px;color:var(--ink-soft)}
 .narrator-paste-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
@@ -1621,7 +1624,7 @@ const body = document.getElementById(bodyId);
 const classOptions='<option value="">Tutte le Classificazioni</option>'+CLASSI.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
 body.innerHTML =
 clinicalImportNoticeHtml() +
-'<div class="narrator-paste-box"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi del Narratore</h4>'+
+'<div class="narrator-paste-box"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi</h4>'+
 '<p class="muted" style="margin:0 0 8px">Puoi incollare un elenco anche scritto in modo approssimativo: maiuscole/minuscole non contano e le Classificazioni possono essere scritte come X, xx, Xx, XXX ecc. Puoi anche mettere una Classificazione su una riga e i relativi Sintomi nelle righe successive.</p>'+
 '<textarea id="pz-narrator-paste" placeholder="Esempio:&#10;Xx&#10;fratture&#10;vertigine&#10;XXX: febre"></textarea>'+
 '<div class="narrator-paste-actions"><button type="button" class="btn small gold" id="pz-narrator-apply">Riconosci e seleziona</button><span class="muted">Le voci dubbie non vengono assegnate a caso.</span></div>'+
@@ -2886,7 +2889,7 @@ body.innerHTML =
 '<div id="diag-dadi" style="margin-top:12px"></div>'+
 '<div class="panel" style="background:#fff;margin-top:20px"><h4>Sintomi individuati</h4>'+
 '<p class="muted">Prima scegli in alto la Classificazione. Poi puoi selezionare i Sintomi, scriverne il nome nella ricerca oppure incollare direttamente quelli comunicati dal Narratore. I Sintomi di una fascia fallita restano bloccati finché la Classificazione non viene riconosciuta o comunicata dal Narratore.</p>'+
-'<div class="narrator-paste-box"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla Sintomi comunicati dal Narratore</h4>'+
+'<div class="narrator-paste-box"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi</h4>'+
 '<textarea id="diag-narrator-paste" placeholder="Esempio: XX: fratture, vertigine&#10;XXX&#10;febre"></textarea>'+
 '<div class="narrator-paste-actions"><button type="button" class="btn small gold" id="diag-narrator-apply">Riconosci e aggiungi</button><span class="muted">Le Classificazioni trovate vengono segnate come già note dal Narratore.</span></div>'+
 '<div id="diag-narrator-result" class="narrator-paste-result"></div></div>'+
