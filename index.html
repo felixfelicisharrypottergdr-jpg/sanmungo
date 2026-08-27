@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>Medimagia — San Mungo</title>
 <!-- v41: import clinico ffmed consumato anche dall'URL; il refresh del Reparto Pazienti torna davvero vuoto -->
+<!-- v42: inserimento Sintomi rapido — incolla libera del Narratore con riconoscimento approssimativo; filtro per Classificazione + ricerca testuale in Pazienti e Medimaghi -->
 <!-- v40: import clinico allineato al tool Riuscita/Incantesimi/Piante/Creature/Pozioni — Salute, Sintomi e bersaglio -->
 <!-- v39: dadi Diagnosi/Terapia/Chirurgia riallineati a medimagia5; sessioni Medimaghi migrate ai nuovi valori -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -90,12 +91,21 @@ padding:3px 8px; border-radius:6px; letter-spacing:.05em;
 .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px}
 @media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
 label{display:block; font-size:13px; color:var(--sage); font-weight:600; margin-bottom:4px; letter-spacing:.02em}
-input[type=text],input[type=number],select{
+input[type=text],input[type=number],select,textarea{
 width:100%; padding:9px 10px; border:1.5px solid var(--line); border-radius:8px;
 background:#fff; font-family:Georgia,'Iowan Old Style',serif; font-size:16px; color:var(--ink);
 }
 input[type=checkbox]{transform:scale(1.15); margin-right:6px}
 .field{margin-bottom:14px}
+textarea{width:100%;min-height:96px;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;background:#fff;font-family:Georgia,'Iowan Old Style',serif;font-size:15px;color:var(--ink);resize:vertical}
+.sym-entry-tools{display:grid;grid-template-columns:minmax(160px,.7fr) minmax(220px,1.3fr);gap:12px;align-items:end;margin:12px 0}
+.narrator-paste-box{margin:10px 0 14px;padding:12px 14px;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;background:#f8fbf8}
+.narrator-paste-box h4{margin:0 0 6px;color:var(--ink-soft)}
+.narrator-paste-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.narrator-paste-result{margin-top:8px;font-size:13px;line-height:1.45}
+.narrator-paste-result.ok{color:var(--lieve)}
+.narrator-paste-result.warn{color:var(--grave)}
+@media(max-width:640px){.sym-entry-tools{grid-template-columns:1fr}}
 .btn{
 font-family:'Palatino Linotype','Book Antiqua',Georgia,serif; font-size:13px; letter-spacing:.04em; text-transform:uppercase;
 background:var(--ink); color:var(--parchment); border:none; border-radius:8px;
@@ -833,6 +843,118 @@ const d = document.createElement('div');
 d.textContent = s;
 return d.innerHTML;
 }
+
+/* ===== v42: ricerca tollerante e incolla libera Sintomi ===== */
+function normSintomoTesto(v){
+  var s=String(v==null?'':v);
+  try{s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');}catch(e){}
+  s=s.toLowerCase();
+  s=s.replace(/\b(primo|i)\s+grado\b/g,'1 grado')
+     .replace(/\b(secondo|ii)\s+grado\b/g,'2 grado')
+     .replace(/\b(terzo|iii)\s+grado\b/g,'3 grado')
+     .replace(/\b(quarto|iv)\s+grado\b/g,'4 grado')
+     .replace(/\b(quinto|v)\s+grado\b/g,'5 grado');
+  return s.replace(/[’']/g,' ').replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+}
+function estraiClasseSintomo(raw){
+  var s=String(raw==null?'':raw);
+  var m=s.match(/(?:^|[\s(\[{:;,\-–—])([xX](?:\s*[xX]){0,4})(?=$|[\s)\]}:;,\-–—])/);
+  if(!m)return '';
+  var c=m[1].replace(/\s+/g,'').toUpperCase();
+  return CLASSI.indexOf(c)>=0?c:'';
+}
+function rimuoviClasseDaTesto(raw){
+  return String(raw==null?'':raw)
+    .replace(/(?:^|[\s(\[{:;,\-–—])([xX](?:\s*[xX]){0,4})(?=$|[\s)\]}:;,\-–—])/ig,' ')
+    .replace(/^[\s•*+\-–—:;,.]+|[\s•*+\-–—:;,.]+$/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function distanzaLevenshtein(a,b){
+  a=String(a||'');b=String(b||'');
+  if(!a.length)return b.length;if(!b.length)return a.length;
+  var prev=new Array(b.length+1),cur=new Array(b.length+1),i,j;
+  for(j=0;j<=b.length;j++)prev[j]=j;
+  for(i=1;i<=a.length;i++){
+    cur[0]=i;
+    for(j=1;j<=b.length;j++){
+      var cost=a.charAt(i-1)===b.charAt(j-1)?0:1;
+      cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+cost);
+    }
+    var tmp=prev;prev=cur;cur=tmp;
+  }
+  return prev[b.length];
+}
+function punteggioSintomo(query,nome){
+  var q=normSintomoTesto(query),n=normSintomoTesto(nome);
+  if(!q||!n)return 0;
+  if(q===n)return 1;
+  if(n.indexOf(q)>=0||q.indexOf(n)>=0){
+    var ratio=Math.min(q.length,n.length)/Math.max(q.length,n.length);
+    return .84+.14*ratio;
+  }
+  var dist=distanzaLevenshtein(q,n), lev=1-dist/Math.max(q.length,n.length);
+  var qt=q.split(' '),nt=n.split(' '),common=0,maxTokenSim=0;
+  function radice(t){return t.length>4?t.replace(/[aeiou]$/,''):t;}
+  qt.forEach(function(t){
+    nt.forEach(function(x){
+      var sim=1-distanzaLevenshtein(t,x)/Math.max(t.length,x.length,1);
+      if(radice(t)===radice(x) && radice(t).length>=4){sim=Math.max(sim,.96);}
+      if(sim>maxTokenSim)maxTokenSim=sim;
+    });
+    if(t.length>1&&nt.some(function(x){return x===t || radice(x)===radice(t) || (t.length>3&&x.indexOf(t)===0) || (x.length>3&&t.indexOf(x)===0);})){common++;}
+  });
+  var token=common/Math.max(qt.length,nt.length,1);
+  return Math.max(lev,.58*lev+.42*token,.72*maxTokenSim+.28*token);
+}
+function sintomoCorrispondeRicerca(s,q){
+  q=String(q||'').trim();
+  if(!q)return true;
+  var nq=normSintomoTesto(q),nn=normSintomoTesto(s&&s.n);
+  return nn.indexOf(nq)>=0 || nq.indexOf(nn)>=0 || punteggioSintomo(q,s.n)>=.58;
+}
+function risolviSintomoApprossimativo(raw,classeForzata){
+  var classe=classeForzata||estraiClasseSintomo(raw);
+  var query=rimuoviClasseDaTesto(raw);
+  query=query.replace(/^(?:sintom[oi]|diagnosi|classe|classificazione)\s*[:\-]?\s*/i,'').trim();
+  if(!query)return {match:null,classe:classe,query:'',score:0};
+  var candidati=SINTOMI.filter(function(s){return !classe || s.c===classe;});
+  var scored=candidati.map(function(s){return {s:s,score:punteggioSintomo(query,s.n)};})
+    .sort(function(a,b){return b.score-a.score;});
+  if(!scored.length)return {match:null,classe:classe,query:query,score:0};
+  var best=scored[0],second=scored[1];
+  var soglia=query.length<=4?.72:(query.length<=7?.62:.56);
+  var ambiguo=second && best.score<.92 && (best.score-second.score)<.035;
+  return {match:(best.score>=soglia&&!ambiguo)?best.s:null,classe:classe,query:query,score:best.score,best:best.s,ambiguous:!!ambiguo};
+}
+function analizzaSintomiNarratore(testo){
+  var chunks=String(testo||'').replace(/\r/g,'\n').split(/\n|[;•|]+|,(?=\s*[A-Za-zÀ-ÿXx])/);
+  var classeContesto='',matches=[],unmatched=[],seen={};
+  chunks.forEach(function(raw){
+    raw=String(raw||'').trim();
+    if(!raw)return;
+    var c=estraiClasseSintomo(raw);
+    var senza=rimuoviClasseDaTesto(raw);
+    if(c&&!senza){classeContesto=c;return;}
+    if(c){classeContesto=c;}
+    var r=risolviSintomoApprossimativo(raw,c||classeContesto);
+    if(r.match){
+      if(!seen[r.match.id]){seen[r.match.id]=true;matches.push({s:r.match,input:raw,score:r.score});}
+    }else if(r.query){
+      unmatched.push({input:raw,best:r.best||null,score:r.score,ambiguous:r.ambiguous});
+    }
+  });
+  return {matches:matches,unmatched:unmatched};
+}
+function htmlEsitoIncolla(res){
+  var parti=[];
+  if(res.matches.length){
+    parti.push('<div class="success"><b>Riconosciuti '+res.matches.length+':</b> '+res.matches.map(function(x){return x.s.c+' '+esc(x.s.n)+(x.score<.90?' ≈':'');}).join(' • ')+'</div>');
+  }
+  if(res.unmatched.length){
+    parti.push('<div class="fail" style="margin-top:5px"><b>Da controllare manualmente:</b> '+res.unmatched.map(function(x){return esc(x.input)+(x.best?' (forse '+x.best.c+' '+esc(x.best.n)+')':'');}).join(' • ')+'</div>');
+  }
+  return parti.join('')||'<span class="muted">Non ho trovato Sintomi da elaborare.</span>';
+}
 function copyText(txt, btn){
 function fatto(){
 const orig = btn.textContent;
@@ -1496,56 +1618,79 @@ renderStepSintomi(stepper.bodyId(0));
 
 function renderStepSintomi(bodyId){
 const body = document.getElementById(bodyId);
+const classOptions='<option value="">Tutte le Classificazioni</option>'+CLASSI.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
 body.innerHTML =
 clinicalImportNoticeHtml() +
-'<div class="field searchbar"><label>Cerca un Sintomo</label>' +
-'<input type="text" id="pz-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div>' +
+'<div class="narrator-paste-box"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi del Narratore</h4>'+
+'<p class="muted" style="margin:0 0 8px">Puoi incollare un elenco anche scritto in modo approssimativo: maiuscole/minuscole non contano e le Classificazioni possono essere scritte come X, xx, Xx, XXX ecc. Puoi anche mettere una Classificazione su una riga e i relativi Sintomi nelle righe successive.</p>'+
+'<textarea id="pz-narrator-paste" placeholder="Esempio:&#10;Xx&#10;fratture&#10;vertigine&#10;XXX: febre"></textarea>'+
+'<div class="narrator-paste-actions"><button type="button" class="btn small gold" id="pz-narrator-apply">Riconosci e seleziona</button><span class="muted">Le voci dubbie non vengono assegnate a caso.</span></div>'+
+'<div id="pz-narrator-result" class="narrator-paste-result"></div></div>'+
+'<div class="sym-entry-tools">'+
+'<div class="field"><label>1. Classificazione</label><select id="pz-class-filter">'+classOptions+'</select></div>'+
+'<div class="field searchbar" style="margin-bottom:0"><label>2. Scrivi o cerca un Sintomo</label><input type="text" id="pz-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div>'+
+'</div>'+
 '<div class="sym-list" id="pz-symlist"></div>' +
 '<div class="panel" style="background:#fff;margin-top:14px"><label><input type="checkbox" id="pz-salute-zero"' + (pazienteState.saluteZero?' checked':'') + '> Il PG si trova attualmente a <b>0 Punti Salute</b></label><p class="muted" style="margin:8px 0 0">Se il quadro comprende almeno un Sintomo XXXX-XXXXX, il tool applicherà il meccanismo dello Stato di Agonia prima di permettere di scegliere il metodo di guarigione.</p></div>';
+
 const list = document.getElementById('pz-symlist');
-let html = '';
-CLASSI.forEach(function(c){
-SINTOMI.filter(function(s){ return s.c === c; }).forEach(function(s){
-const checked = pazienteState.scelti.has(s.id);
-html += '<div class="sym-row' + (checked?' checked':'') + '" data-id="' + s.id + '">' +
-'<input type="checkbox" data-id="' + s.id + '"' + (checked?' checked':'') + '>' +
-'<span class="class-badge class-' + c + '">' + c + '</span>' +
-'<span class="nm">' + esc(s.n) + '</span>' +
-'</div>';
-});
-});
-list.innerHTML = html;
-Array.prototype.forEach.call(list.querySelectorAll('.sym-row'), function(row){
-onPress(row, function(ev){
-if(ev.target.tagName !== 'INPUT'){
-const box = row.querySelector('input');
-box.checked = !box.checked;
+const search=document.getElementById('pz-search');
+const classFilter=document.getElementById('pz-class-filter');
+
+function resetQuadroDipendente(){
+  pazienteState.metodo = null;
+  pazienteState.complicazioni = {};
+  pazienteState.componentiConfermate = false;
+  pazienteState.componentiAuto = [];
+  pazienteState.agoniaStabilizzata = false;
 }
-const id = row.getAttribute('data-id');
-const box = row.querySelector('input');
-if(box.checked){
-pazienteState.scelti.add(id);
-row.classList.add('checked');
-} else {
-pazienteState.scelti.delete(id);
-row.classList.remove('checked');
+function renderListaSintomiPaziente(){
+  const c=classFilter.value,q=search.value.trim();
+  let html='';
+  CLASSI.forEach(function(cl){
+    if(c&&cl!==c)return;
+    SINTOMI.filter(function(s){return s.c===cl && sintomoCorrispondeRicerca(s,q);}).forEach(function(s){
+      const checked=pazienteState.scelti.has(s.id);
+      html+='<div class="sym-row'+(checked?' checked':'')+'" data-id="'+s.id+'">'+
+      '<input type="checkbox" data-id="'+s.id+'"'+(checked?' checked':'')+'>'+
+      '<span class="class-badge class-'+cl+'">'+cl+'</span><span class="nm">'+esc(s.n)+'</span></div>';
+    });
+  });
+  list.innerHTML=html||'<div class="muted" style="padding:12px 14px">Nessun Sintomo corrisponde ai filtri. Puoi modificare la Classificazione o continuare a scrivere nella ricerca.</div>';
+  Array.prototype.forEach.call(list.querySelectorAll('.sym-row'),function(row){
+    onPress(row,function(ev){
+      const box=row.querySelector('input');
+      if(ev.target.tagName!=='INPUT'){box.checked=!box.checked;}
+      const id=row.getAttribute('data-id');
+      if(box.checked){pazienteState.scelti.add(id);row.classList.add('checked');}
+      else{pazienteState.scelti.delete(id);row.classList.remove('checked');}
+      resetQuadroDipendente();
+    });
+  });
 }
-/* Cambiando il quadro clinico, metodo, Complicazioni e conferma Componenti
-   devono essere nuovamente verificati sul nuovo insieme di Sintomi. */
-pazienteState.metodo = null;
-pazienteState.complicazioni = {};
-pazienteState.componentiConfermate = false;
-pazienteState.componentiAuto = [];
-pazienteState.agoniaStabilizzata = false;
+classFilter.addEventListener('change',renderListaSintomiPaziente);
+search.addEventListener('input',renderListaSintomiPaziente);
+renderListaSintomiPaziente();
+
+onPress(document.getElementById('pz-narrator-apply'),function(){
+  const ta=document.getElementById('pz-narrator-paste');
+  const res=analizzaSintomiNarratore(ta.value);
+  let aggiunti=0;
+  res.matches.forEach(function(x){
+    if(!pazienteState.scelti.has(x.s.id)){pazienteState.scelti.add(x.s.id);aggiunti++;}
+  });
+  if(aggiunti){resetQuadroDipendente();}
+  const out=document.getElementById('pz-narrator-result');
+  out.innerHTML=htmlEsitoIncolla(res);
+  out.className='narrator-paste-result '+(res.unmatched.length?'warn':'ok');
+  if(res.matches.length){
+    const classi=Array.from(new Set(res.matches.map(function(x){return x.s.c;})));
+    if(classi.length===1){classFilter.value=classi[0];}
+    search.value='';
+    renderListaSintomiPaziente();
+  }
 });
-});
-document.getElementById('pz-search').addEventListener('input', function(ev){
-const q = ev.target.value.trim().toLowerCase();
-Array.prototype.forEach.call(list.querySelectorAll('.sym-row'), function(row){
-const txt = row.querySelector('.nm').textContent.toLowerCase();
-row.style.display = (txt.indexOf(q) >= 0) ? '' : 'none';
-});
-});
+
 const zeroBox = document.getElementById('pz-salute-zero');
 if(zeroBox){
 zeroBox.addEventListener('change', function(){
@@ -1558,7 +1703,6 @@ pazienteState.componentiAuto = [];
 });
 }
 }
-
 function renderStepGravita(){
 const body = document.getElementById('pz_body1');
 const scelti = sintomiScelti();
@@ -2741,15 +2885,19 @@ body.innerHTML =
 '<button type="button" class="btn gold" id="diag-genera" style="margin-top:14px">Genera le righe di Diagnosi</button>'+
 '<div id="diag-dadi" style="margin-top:12px"></div>'+
 '<div class="panel" style="background:#fff;margin-top:20px"><h4>Sintomi individuati</h4>'+
-'<p class="muted">Segna qui soltanto i Sintomi effettivamente riconosciuti. Se una Classificazione è stata fallita, non segnare i Sintomi di quella fascia finché non vengono riconosciuti con un nuovo tentativo o comunicati dal Narratore.</p>'+
-'<div class="field searchbar"><label>Cerca un Sintomo</label><input type="text" id="diag-ind-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div>'+
+'<p class="muted">Prima scegli in alto la Classificazione. Poi puoi selezionare i Sintomi, scriverne il nome nella ricerca oppure incollare direttamente quelli comunicati dal Narratore. I Sintomi di una fascia fallita restano bloccati finché la Classificazione non viene riconosciuta o comunicata dal Narratore.</p>'+
+'<div class="narrator-paste-box"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla Sintomi comunicati dal Narratore</h4>'+
+'<textarea id="diag-narrator-paste" placeholder="Esempio: XX: fratture, vertigine&#10;XXX&#10;febre"></textarea>'+
+'<div class="narrator-paste-actions"><button type="button" class="btn small gold" id="diag-narrator-apply">Riconosci e aggiungi</button><span class="muted">Le Classificazioni trovate vengono segnate come già note dal Narratore.</span></div>'+
+'<div id="diag-narrator-result" class="narrator-paste-result"></div></div>'+
+'<div class="field searchbar"><label>Scrivi o cerca un Sintomo</label><input type="text" id="diag-ind-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div>'+
 '<div class="sym-list" id="diag-ind-lista" style="max-height:260px"></div><div id="diag-prune-note" class="step-warning"></div></div>';
 const listaInd=document.getElementById('diag-ind-lista'); const searchInd=document.getElementById('diag-ind-search');
 function classiSel(){ return Array.prototype.map.call(body.querySelectorAll('.diag-classe:checked'),function(x){return x.value;}); }
 function renderLista(){
 const cs=classiSel(), q=searchInd.value.trim().toLowerCase();
 if(!cs.length){listaInd.innerHTML='<div class="muted" style="padding:12px 14px">Seleziona prima una o più Classificazioni.</div>';return;}
-let h=''; cs.forEach(function(c){SINTOMI.filter(function(ss){return ss.c===c && (!q||ss.n.toLowerCase().indexOf(q)>=0);}).forEach(function(ss){
+let h=''; cs.forEach(function(c){SINTOMI.filter(function(ss){return ss.c===c && sintomoCorrispondeRicerca(ss,q);}).forEach(function(ss){
 const ck=medimagoState.sintomiIndividuati.has(ss.id),abilitata=classeRiconosciuta(c); h+='<div class="sym-row'+(ck?' checked':'')+(abilitata?'':' disabled')+'" data-id="'+ss.id+'"><input type="checkbox"'+(ck?' checked':'')+(abilitata?'':' disabled')+'><span class="class-badge class-'+c+'">'+c+'</span><span class="nm">'+esc(ss.n)+'</span></div>'; });});
 listaInd.innerHTML=h||'<div class="muted" style="padding:12px 14px">Nessun Sintomo corrisponde alla ricerca.</div>';
 Array.prototype.forEach.call(listaInd.querySelectorAll('.sym-row'),function(row){onPress(row,function(ev){
@@ -2761,6 +2909,35 @@ if(nota && rimossi){nota.textContent='Hai rimosso questo Sintomo dalla Diagnosi:
 }
 });});
 }
+onPress(document.getElementById('diag-narrator-apply'),function(){
+const outRes=document.getElementById('diag-narrator-result');
+const sospesa=diagnosiInSospeso();
+if(sospesa){
+  outRes.className='narrator-paste-result warn';
+  outRes.textContent='Completa o correggi prima il tiro di Diagnosi attualmente in sospeso; poi potrai aggiungere i Sintomi del Narratore.';
+  return;
+}
+const res=analizzaSintomiNarratore(document.getElementById('diag-narrator-paste').value);
+res.matches.forEach(function(x){
+  const c=x.s.c;
+  medimagoState.classiDiagnosi.add(c);
+  const chk=body.querySelector('.diag-classe[value="'+c+'"]');
+  if(chk){chk.checked=true;}
+  impostaFonteClasse(c,'narratore',true);
+  registraSintomoRiconosciuto(x.s.id,true);
+});
+outRes.innerHTML=htmlEsitoIncolla(res);
+outRes.className='narrator-paste-result '+(res.unmatched.length?'warn':'ok');
+if(res.matches.length){
+  const dadiGenerati=document.getElementById('diag-dadi');
+  if(dadiGenerati&&dadiGenerati.innerHTML.trim()){
+    dadiGenerati.innerHTML='<div class="note"><b>Sintomi del Narratore aggiunti.</b> Le Classificazioni corrispondenti sono ora considerate già note: genera nuovamente le righe di Diagnosi per avere controlli coerenti. Gli eventuali tiri già registrati restano nello storico.</div>';
+  }
+  searchInd.value='';
+  renderLista();
+  renderStepRiepilogo();
+}
+});
 medimagoState.refreshListaDiagnosi=renderLista;
 Array.prototype.forEach.call(body.querySelectorAll('.diag-classe'),function(chk){chk.addEventListener('change',function(){
 const sospesa=diagnosiInSospeso();
@@ -2894,7 +3071,9 @@ body.innerHTML=bulkHtml+
 '<h4 style="margin-top:20px">Sintomi già aggiunti</h4><div id="cura-coda"></div>'+
 '<button type="button" class="btn ghost" id="cura-toggle-form" style="margin-top:20px">+ Aggiungi Sintomo già noto/comunicato dal Narratore o riconosciuto</button>'+
 '<div id="cura-form-wrap" class="hidden" style="margin-top:14px">'+
-'<div class="field"><label>Sintomo</label><select id="cura-sel">'+opzioniSintomi+'</select></div>'+guaritoreChooserSingle('cura-guaritore')+
+'<div class="sym-entry-tools"><div class="field"><label>1. Classificazione</label><select id="cura-class-filter"><option value="">Tutte le Classificazioni</option>'+CLASSI.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('')+'</select></div>'+
+'<div class="field searchbar" style="margin-bottom:0"><label>2. Scrivi o cerca un Sintomo</label><input type="text" id="cura-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div></div>'+
+'<div class="field"><label>3. Sintomo</label><select id="cura-sel">'+opzioniSintomi+'</select></div>'+guaritoreChooserSingle('cura-guaritore')+
 '<div id="cura-rimedio" class="prep-preview" style="margin-bottom:12px"></div>'+
 '<label><input type="checkbox" id="cura-componenti"> Confermo che il Guaritore possiede tutte le Componenti del Rimedio ONGame necessarie (una sola delle alternative esplicitamente previste)</label>'+
 '<div class="grid2" style="margin-top:12px"><div class="field"><label><input type="checkbox" id="cura-usa-pozione"> Il ramo di Rimedio scelto usa effettivamente una Pozione</label><select id="cura-pozione" disabled><option value="no">Forza Standard / nessun bonus</option><option value="oop">Forza Oltre Ogni Previsione (+1)</option><option value="ecc">Forza Eccezionale (+2)</option></select><span class="spiega-inline">Seleziona la Forza della dose usata, non un voto scolastico del PG.</span></div>'+
@@ -2904,19 +3083,36 @@ body.innerHTML=bulkHtml+
 setupNumericInputs(body);
 onPress(document.getElementById('cura-toggle-form'),function(){const w=document.getElementById('cura-form-wrap'),bt=document.getElementById('cura-toggle-form');w.classList.toggle('hidden');bt.textContent=w.classList.contains('hidden')?'+ Aggiungi Sintomo già noto/comunicato dal Narratore o riconosciuto':'− Nascondi il modulo';});
 const wrap=document.getElementById('cura-coda'); if(!medimagoState.coda.length){wrap.innerHTML='<p class="muted" id="cura-coda-vuota">Nessun Sintomo aggiunto ancora.</p>';}else{medimagoState.coda.forEach(function(item){aggiungiCardCura(item,item.risultato==null?null:item.risultato);});}
+const curaClassFilter=document.getElementById('cura-class-filter'),curaSearch=document.getElementById('cura-search'),curaSel=document.getElementById('cura-sel');
+function aggiornaOpzioniCura(){
+  const old=curaSel.value,c=curaClassFilter.value,q=curaSearch.value.trim();
+  const filtrati=SINTOMI.filter(function(ss){return (!c||ss.c===c)&&sintomoCorrispondeRicerca(ss,q);});
+  curaSel.innerHTML=filtrati.length?filtrati.map(function(ss){return '<option value="'+ss.id+'">'+ss.c+' — '+esc(ss.n)+'</option>';}).join(''):'<option value="">— Nessun Sintomo corrispondente —</option>';
+  if(old&&filtrati.some(function(ss){return ss.id===old;})){curaSel.value=old;}
+}
 function currentG(){return medimagoState.guaritori.find(function(x){return x.id===document.getElementById('cura-guaritore').value;});}
-function currentPhase(){const ss=SINTOMI_BY_ID[document.getElementById('cura-sel').value];return isGrave(ss.c)?'chirurgia':'terapia';}
-function refreshEffects(preserve){const host=document.getElementById('cura-effects');const selected=preserve?selectedEffectIds(host):[];renderPhaseEffectChoices(host,currentG(),currentPhase(),'cura',selected,'');Array.prototype.forEach.call(host.querySelectorAll('.med-effect-choice'),function(ch){ch.addEventListener('change',aggiornaAnteprima);});}
+function currentPhase(){const ss=SINTOMI_BY_ID[curaSel.value];return ss?(isGrave(ss.c)?'chirurgia':'terapia'):null;}
+function refreshEffects(preserve){
+  const host=document.getElementById('cura-effects'),phase=currentPhase();
+  if(!phase){host.innerHTML='';return;}
+  const selected=preserve?selectedEffectIds(host):[];
+  renderPhaseEffectChoices(host,currentG(),phase,'cura',selected,'');
+  Array.prototype.forEach.call(host.querySelectorAll('.med-effect-choice'),function(ch){ch.addEventListener('change',aggiornaAnteprima);});
+}
 medimagoState.refreshCuraEffects=function(){refreshEffects(true);aggiornaAnteprima();};
 function aggiornaAnteprima(){
-const sid=document.getElementById('cura-sel').value,gid=document.getElementById('cura-guaritore').value,poz=document.getElementById('cura-pozione').value,usaPozione=document.getElementById('cura-usa-pozione').checked,self=document.getElementById('cura-selfcure').checked,effectIds=selectedEffectIds(document.getElementById('cura-effects')),ss=SINTOMI_BY_ID[sid];
-document.getElementById('cura-rimedio').innerHTML='<b>Rimedio ONGame:</b> '+esc(ss.r)+'<br><b>Passaggi:</b> '+esc(ss.p); const info=calcolaDadoCura(sid,gid,poz,usaPozione,self,effectIds,''),box=document.getElementById('cura-anteprima');box.innerHTML='<div id="cura-anteprima-dado"></div>';const target=document.getElementById('cura-anteprima-dado');
+const sid=curaSel.value,gid=document.getElementById('cura-guaritore').value,poz=document.getElementById('cura-pozione').value,usaPozione=document.getElementById('cura-usa-pozione').checked,self=document.getElementById('cura-selfcure').checked,effectIds=selectedEffectIds(document.getElementById('cura-effects')),ss=SINTOMI_BY_ID[sid];
+const rimedio=document.getElementById('cura-rimedio'),box=document.getElementById('cura-anteprima');
+if(!ss){rimedio.innerHTML='<span class="muted">Seleziona un Sintomo dai filtri sopra.</span>';box.innerHTML='';return;}
+rimedio.innerHTML='<b>Rimedio ONGame:</b> '+esc(ss.r)+'<br><b>Passaggi:</b> '+esc(ss.p); const info=calcolaDadoCura(sid,gid,poz,usaPozione,self,effectIds,''),box2=document.getElementById('cura-anteprima');box2.innerHTML='<div id="cura-anteprima-dado"></div>';const target=document.getElementById('cura-anteprima-dado');
 if(info.blocked){target.innerHTML='<div class="result-box grave"><b>Nessun tiro di cura diretto.</b><br>'+esc(info.failText)+'</div>';}else if(info.forceFail){renderDiceCheck(target,{forceFail:true,failText:info.failText,onConfirm:function(){}});}else{renderDiceCheck(target,{faces:info.faces,autoAtOrAbove:true,addends:info.addends,successLabel:info.successLabel,onConfirm:function(){}});}
 }
 document.getElementById('cura-usa-pozione').addEventListener('change',function(){const sel=document.getElementById('cura-pozione');sel.disabled=!this.checked;if(!this.checked){sel.value='no';}aggiornaAnteprima();});
+curaClassFilter.addEventListener('change',function(){aggiornaOpzioniCura();refreshEffects(false);aggiornaAnteprima();});
+curaSearch.addEventListener('input',function(){aggiornaOpzioniCura();refreshEffects(false);aggiornaAnteprima();});
 ['cura-sel','cura-guaritore'].forEach(function(id){const el=document.getElementById(id);el.addEventListener('change',function(){refreshEffects(false);aggiornaAnteprima();});});
 ['cura-pozione','cura-selfcure'].forEach(function(id){document.getElementById(id).addEventListener('change',aggiornaAnteprima);});
-refreshEffects(false); aggiornaAnteprima();
+aggiornaOpzioniCura();refreshEffects(false); aggiornaAnteprima();
 
 function creaEAggiungi(sid,gid,poz,usaPozione,self,effectIds,pre,origine){
 const ss=SINTOMI_BY_ID[sid],g=medimagoState.guaritori.find(function(x){return x.id===gid;});curaItemCounter+=1;const uid='ci'+curaItemCounter;const phase=isGrave(ss.c)?'chirurgia':'terapia';const res=reserveEffects(g,phase,effectIds,uid);if(!res.ok){curaItemCounter-=1;return {ok:false,motivo:res.error};}
@@ -2928,7 +3124,9 @@ const item={uid:uid,sid:sid,guaritoreId:gid,pozione:poz,usaPozione:!!usaPozione,
 }
 
 onPress(document.getElementById('cura-add'),function(){
-const warn=document.getElementById('cura-form-warn'),sid=document.getElementById('cura-sel').value; const sospeso=medimagoState.coda.find(function(it){return it.sid===sid && it.esito===null;});
+const warn=document.getElementById('cura-form-warn'),sid=document.getElementById('cura-sel').value;
+if(!sid||!SINTOMI_BY_ID[sid]){warn.textContent='Seleziona prima un Sintomo valido.';return;}
+const sospeso=medimagoState.coda.find(function(it){return it.sid===sid && it.esito===null;});
 if(sospeso){warn.textContent='Esiste già un tentativo di cura per questo Sintomo con risultato ancora da completare. Correggi o inserisci prima il risultato di quel dado; soltanto dopo potrai aggiungere un vero ritentativo.';return;}
 if(sintomoSenzaRimedioDiretto(SINTOMI_BY_ID[sid])){warn.textContent='Questo Sintomo non possiede un Rimedio diretto e non può essere aggiunto come normale Terapia/Chirurgia.';return;}
 if(!document.getElementById('cura-componenti').checked){warn.textContent='Conferma prima la disponibilità di tutte le Componenti del Rimedio ONGame.';return;} warn.textContent='';
