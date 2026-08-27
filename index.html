@@ -5,6 +5,12 @@
 <title>Medimagia — San Mungo</title>
 <!-- v41: import clinico ffmed consumato anche dall'URL; il refresh del Reparto Pazienti torna davvero vuoto -->
 <!-- v44: Incolla i Sintomi riconosce anche elenchi naturali separati da virgole e dalla congiunzione “e/ed” (es. A, B e C). -->
+<!-- v48: migrazione sicura delle sessioni v46 — le vecchie fonti OFFGame automatiche tornano “da confermare”; i nuovi salvataggi ricordano la conferma esplicita. -->
+<!-- v50: Diagnosi divisa in due tendine autonome: Sintomi già noti ONGame e Sintomi da scoprire; i dadi vengono generati esclusivamente dalle Classificazioni dei Sintomi da scoprire. -->
+<!-- v49: separati Sintomi conosciuti OFFGame dal giocatore e Sintomi già noti ONGame al PG; i Sintomi diventano noti ONGame solo con Diagnosi riuscita o conferma esplicita “Già noti ONGame”. -->
+<!-- v47: ritorno ai Guaritori senza effetto “dati spariti”; Sintomi conosciuti OFFGame in bozza finché non confermati esplicitamente; Diagnosi non saltata senza conferma. -->
+<!-- v46: flusso Medimaghi snellito — PG sessione riusato; Sintomi conosciuti OFFGame prima della Diagnosi; import automatico in Terapia/Chirurgia; riepiloghi a lista -->
+<!-- v45: ritentativi di Terapia/Chirurgia immediati e storicizzati in Pazienti e Medimaghi -->
 <!-- v42: inserimento Sintomi rapido — incolla libera del Narratore con riconoscimento approssimativo; filtro per Classificazione + ricerca testuale in Pazienti e Medimaghi -->
 <!-- v40: import clinico allineato al tool Riuscita/Incantesimi/Piante/Creature/Pozioni — Salute, Sintomi e bersaglio -->
 <!-- v39: dadi Diagnosi/Terapia/Chirurgia riallineati a medimagia5; sessioni Medimaghi migrate ai nuovi valori -->
@@ -669,6 +675,24 @@ body{
 .result-box,.result-box b,.result-box strong{color:#243d30!important;}
 .result-box.grave,.result-box.grave b,.result-box.grave strong{color:#64232c!important;}
 .btn,button{font-weight:700;}
+</style>
+<style id="v46-flow-css">
+.phase-summary-lists{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
+.phase-summary-list{padding:11px 13px;background:#dcebdd;border:1px solid #b4cdb8;border-radius:10px;color:#315c46;font-size:14px}
+.phase-summary-list strong{color:#315c46!important}
+.phase-summary-list div{margin:3px 0}
+.diag-known-panel{margin-bottom:18px}
+.diag-known-panel>.rule-details{margin:9px 0}
+.diag-known-panel .sym-list{max-height:280px}
+.diag-known-state{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px}
+.cura-import-groups{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.cura-import-group{padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.cura-import-group h4{margin:0 0 8px;color:#7f2d36}
+.cura-import-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--parchment-dark)}
+.cura-import-row:last-child{border-bottom:0}
+.cura-import-row .nm{flex:1;min-width:140px}
+.cura-import-row .status{font-size:12px;color:var(--sage)}
+@media(max-width:700px){.phase-summary-lists,.cura-import-groups{grid-template-columns:1fr}}
 </style>
 <style id="v39-med-session-css">
 #view-medimago .med-session-home{margin:8px 0 20px;padding:20px 22px;border:2px solid #6d8f7c;border-left:6px solid #4f7964;border-radius:10px;background:#edf2ee;color:#25372e;box-shadow:0 7px 22px rgba(0,0,0,.18)}
@@ -1921,6 +1945,44 @@ renderStepMetodo();
 selezionaNota();
 }
 
+function statoAttivoPaziente(s){
+if(!s){return null;}
+let st=pazienteState.complicazioni[s.id];
+if(!st){
+st={esito:null,complicazione:null,classe:s.c,testo:s.x,tentativi:[{esito:null,complicazione:null}]};
+pazienteState.complicazioni[s.id]=st;
+return st;
+}
+if(st.esito==='speciale'){return st;}
+if(!Array.isArray(st.tentativi)){
+st.tentativi=[{esito:st.esito==null?null:st.esito,complicazione:st.complicazione==null?null:st.complicazione}];
+}
+if(!st.tentativi.length){st.tentativi.push({esito:null,complicazione:null});}
+const last=st.tentativi[st.tentativi.length-1];
+st.esito=last.esito==null?null:last.esito;
+st.complicazione=last.complicazione==null?null:last.complicazione;
+st.classe=s.c;st.testo=s.x;
+return st;
+}
+function tentativiAttiviPaziente(s){const st=statoAttivoPaziente(s);return st&&Array.isArray(st.tentativi)?st.tentativi:[];}
+function ultimoTentativoAttivoPaziente(s){const ts=tentativiAttiviPaziente(s);return ts.length?ts[ts.length-1]:null;}
+function impostaTentativoAttivoPaziente(s,idx,esito){
+const st=statoAttivoPaziente(s),reg=regolaComplicazioneSintomo(s);if(!st||!Array.isArray(st.tentativi)||!st.tentativi[idx])return;
+const t=st.tentativi[idx];t.esito=esito;
+t.complicazione=esito==='ok'?'no':(esito==='fail'?(reg.tipo==='nessuna'?'nessuna':'si'):null);
+/* Un esito modificato rende non validi gli eventuali tentativi successivi. */
+if(idx<st.tentativi.length-1){st.tentativi=st.tentativi.slice(0,idx+1);}
+const last=st.tentativi[st.tentativi.length-1];st.esito=last.esito;st.complicazione=last.complicazione;
+}
+function aggiungiTentativoAttivoPaziente(s){
+const st=statoAttivoPaziente(s);if(!st||!Array.isArray(st.tentativi))return false;
+const last=st.tentativi[st.tentativi.length-1];if(!last||last.esito!=='fail')return false;
+st.tentativi.push({esito:null,complicazione:null});st.esito=null;st.complicazione=null;return true;
+}
+function storiaTentativiAttiviPaziente(s){
+return tentativiAttiviPaziente(s).map(function(t,i){return {numero:i+1,esito:t.esito,complicazione:t.complicazione};});
+}
+
 function validaComplicazioniPaziente(){
 const metodo = pazienteState.metodo;
 if(!metodo && quadroSoloComa()){ return true; }
@@ -1930,7 +1992,7 @@ const sceltiValidazione = metodoEPassivo(metodo)
 : sintomiScelti().filter(function(x){ return !sintomoComa(x); });
 const ids = sceltiValidazione.map(function(x){ return x.id; });
 const mancanti = ids.filter(function(id){
-return !pazienteState.complicazioni[id] || pazienteState.complicazioni[id].esito === null;
+if(metodoEPassivo(metodo)){return !pazienteState.complicazioni[id] || pazienteState.complicazioni[id].esito === null;}const ss=SINTOMI_BY_ID[id];const ult=ss?ultimoTentativoAttivoPaziente(ss):null;return !ult || ult.esito === null;
 });
 if(mancanti.length){
 return 'Registra prima l’esito delle Complicazioni per tutti i Sintomi: ne mancano ' + mancanti.length + '.';
@@ -1954,8 +2016,8 @@ return;
 if(metodoEAttivo(metodo)){
 sceltiComplicazioni.forEach(function(s){
 if(!pazienteState.complicazioni[s.id]){
-pazienteState.complicazioni[s.id] = {esito:sintomoSenzaRimedioDiretto(s)?'speciale':null, complicazione:null, classe:s.c, testo:s.x};
-}
+pazienteState.complicazioni[s.id] = sintomoSenzaRimedioDiretto(s)?{esito:'speciale',complicazione:null,classe:s.c,testo:s.x}:{esito:null,complicazione:null,classe:s.c,testo:s.x,tentativi:[{esito:null,complicazione:null}]};
+}else if(!sintomoSenzaRimedioDiretto(s)){statoAttivoPaziente(s);}
 });
 body.innerHTML =
 '<p class="note">Con la Guarigione Attiva il tiro di Terapia/Chirurgia stabilisce se il Sintomo viene curato. Se il trattamento fallisce, il Sintomo resta da curare e il paziente <b>ottiene la Complicazione descritta</b> nella sua scheda. La Complicazione viene poi ruolata autonomamente dal giocatore per il numero di post previsto: il tool non registra quando termina. <b>Se si tratta di un ritentativo dello stesso Sintomo, una Complicazione identica si applica di nuovo soltanto se quella precedente è già stata esaurita nei post del PG; altrimenti non si cumula.</b> Per tutta la durata di una Complicazione, il PG malato non può evocare magie, utilizzare Conoscenze né compiere altre azioni significative. Quando la descrizione dice, per esempio, “per 4 post … se 1 su 1d5”, quel 1d5 va usato nei post previsti dalla Complicazione e non è un secondo tiro per stabilire se la Complicazione esiste. Registra qui soltanto l’esito del trattamento.</p>' +
@@ -1967,37 +2029,39 @@ if(sintomoSenzaRimedioDiretto(s)){
 return '<div class="panel" style="background:#fff"><div style="display:flex;align-items:center;gap:10px;margin-bottom:8px"><span class="class-badge class-' + s.c + '">' + s.c + '</span><b>' + esc(s.n) + '</b></div><div class="note"><b>Nessun Rimedio diretto:</b> ' + esc(s.r) + '<br>' + esc(s.p) + '</div></div>';
 }
 const reg = regolaComplicazioneSintomo(s);
-const okPulitoChecked = attuale && attuale.esito === 'ok' && attuale.complicazione !== 'si';
-const failChecked = attuale && attuale.esito === 'fail';
+const st=statoAttivoPaziente(s),tentativi=st.tentativi||[];
+let tentativiHtml=tentativi.map(function(t,idxTent){
 let fallimentoTxt;
 if(reg.tipo === 'nessuna'){
-fallimentoTxt = 'Terapia/Chirurgia fallita: Sintomo ancora da curare; la scheda non indica una Complicazione specifica';
+fallimentoTxt = 'Trattamento fallito: Sintomo ancora da curare; la scheda non indica una Complicazione specifica';
 } else if(reg.tipo === 'd5'){
-fallimentoTxt = 'Sintomo ancora da curare dopo un fallimento — Complicazione ottenuta: ' + reg.testo + ' (il 1d5 si usa nei post indicati dalla scheda)';
+fallimentoTxt = 'Sintomo ancora da curare — Complicazione: ' + reg.testo + ' (il 1d5 si usa nei post indicati dalla scheda)';
 } else {
-fallimentoTxt = 'Sintomo ancora da curare dopo un fallimento — Complicazione ottenuta: ' + reg.testo;
+fallimentoTxt = 'Sintomo ancora da curare — Complicazione: ' + reg.testo;
 }
+const okChecked=t.esito==='ok',failChecked=t.esito==='fail';
+const storiaFail=failChecked?'<div class="'+(reg.tipo==='nessuna'?'muted':'fail')+'" style="margin-top:7px;font-size:13px">'+(reg.tipo==='nessuna'?'Nessuna Complicazione specifica indicata.':'Complicazione del tentativo '+(idxTent+1)+': '+esc(reg.testo))+'</div>':'';
+return '<div class="prep-block" style="margin:10px 0;background:#fbfdfb">'+
+'<div class="prep-title" style="margin-bottom:8px">Tentativo '+(idxTent+1)+'</div>'+
+'<label style="display:block"><input class="cmp-active-outcome" data-sid="'+s.id+'" data-attempt="'+idxTent+'" type="radio" name="cmp-esito-' + s.id + '-' + idxTent + '" value="ok"'+(okChecked?' checked':'')+'> Sintomo curato</label>'+
+'<label style="display:block;margin-top:6px"><input class="cmp-active-outcome" data-sid="'+s.id+'" data-attempt="'+idxTent+'" type="radio" name="cmp-esito-' + s.id + '-' + idxTent + '" value="fail"'+(failChecked?' checked':'')+'> ' + esc(fallimentoTxt) + '</label>'+storiaFail+
+((t.esito===null)?'<p class="muted" style="margin-top:8px">Esito ancora da registrare.</p>':'')+'</div>';
+}).join('');
+const ultimo=tentativi.length?tentativi[tentativi.length-1]:null;
+const retryHtml=ultimo&&ultimo.esito==='fail'?'<button type="button" class="btn small gold cmp-add-retry" data-sid="'+s.id+'" style="margin-top:2px"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Nuovo tentativo</button>':'';
 return '<div class="panel" style="background:#fff">' +
 '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
 '<span class="class-badge class-' + s.c + '">' + s.c + '</span><b>' + esc(s.n) + '</b>' +
-'</div>' +
-'<label style="display:block"><input type="radio" name="cmp-esito-' + s.id + '" value="ok"' + (okPulitoChecked?' checked':'') + '> Sintomo curato</label>' +
-'<label style="display:block;margin-top:6px"><input type="radio" name="cmp-esito-' + s.id + '" value="fail"' + (failChecked?' checked':'') + '> ' + esc(fallimentoTxt) + '</label>' +
-((attuale && attuale.esito === null) ? '<p class="muted" style="margin-top:8px">Esito ancora da registrare.</p>' : '') +
-'</div>';
+'</div>' + tentativiHtml + retryHtml + '</div>';
 }).join('');
-Array.prototype.forEach.call(lista.querySelectorAll('input[type=radio]'), function(r){
+Array.prototype.forEach.call(lista.querySelectorAll('.cmp-active-outcome'), function(r){
 r.addEventListener('change', function(ev){
-const sid = ev.target.name.replace('cmp-esito-', '');
-const ss = SINTOMI_BY_ID[sid];
-const reg = regolaComplicazioneSintomo(ss);
-const v = ev.target.value;
-if(v === 'ok'){
-pazienteState.complicazioni[sid] = {esito:'ok', complicazione:'no', classe:ss.c, testo:ss.x};
-} else {
-pazienteState.complicazioni[sid] = {esito:'fail', complicazione:reg.tipo === 'nessuna' ? 'nessuna' : 'si', classe:ss.c, testo:ss.x};
-}
+const sid=ev.target.getAttribute('data-sid'),idxTent=Number(ev.target.getAttribute('data-attempt'));const ss=SINTOMI_BY_ID[sid];
+if(!ss)return;impostaTentativoAttivoPaziente(ss,idxTent,ev.target.value);renderStepComplicazioniPaziente();
 });
+});
+Array.prototype.forEach.call(lista.querySelectorAll('.cmp-add-retry'),function(bt){
+onPress(bt,function(){const sid=bt.getAttribute('data-sid'),ss=SINTOMI_BY_ID[sid];if(!ss||!aggiungiTentativoAttivoPaziente(ss))return;renderStepComplicazioniPaziente();setTimeout(function(){const els=document.querySelectorAll('input.cmp-active-outcome[data-sid="'+sid+'"]');if(els.length>=2){els[els.length-2].focus();}},0);});
 });
 return;
 }
@@ -2079,7 +2143,7 @@ datiHtml = '<div class="result-box" style="margin-top:14px">' +
 '</div>';
 } else if(metodoEAttivo(metodo)){
 const trattabili = sintomiDirettamenteTrattabili(scelti);
-const esiti = trattabili.map(function(s){ return {s:s, r:pazienteState.complicazioni[s.id]}; });
+const esiti = trattabili.map(function(s){ const r=ultimoTentativoAttivoPaziente(s);return {s:s, r:r, tentativi:storiaTentativiAttiviPaziente(s)}; });
 const mancanti = esiti.filter(function(x){ return !x.r || x.r.esito === null; });
 const falliti = esiti.filter(function(x){ return x.r && x.r.esito === 'fail'; });
 const attivaCompleta = !mancanti.length && !falliti.length;
@@ -2090,8 +2154,8 @@ statoHtml += '<div class="result-box grave"><b>Guarigione Attiva incompleta:</b>
 statoHtml += '<div class="result-box grave"><b>Il paziente non è ancora completamente guarito.</b> I seguenti Sintomi hanno fallito il trattamento e possono essere ritentati:<ul>' +
 falliti.map(function(x){
 const nessuna = x.r && x.r.complicazione === 'nessuna';
-return '<li><b>' + esc(x.s.n) + '</b>: trattamento fallito, Sintomo ancora da curare' +
-(nessuna ? '; la scheda non indica una Complicazione specifica' : '') + '</li>';
+return '<li><b>' + esc(x.s.n) + '</b>: tentativo '+(x.tentativi.length||1)+' fallito, Sintomo ancora da curare' +
+(nessuna ? '; la scheda non indica una Complicazione specifica' : '') + '<div style="margin-top:7px"><button type="button" class="btn small gold pz-final-retry" data-sid="'+x.s.id+'"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Nuovo tentativo</button></div></li>';
 }).join('') + '</ul></div>';
 } else {
 const specialiOra = scelti.filter(sintomoSenzaRimedioDiretto);
@@ -2100,6 +2164,10 @@ statoHtml += '<div class="result-box ok"><b>Trattamenti diretti riusciti.</b> Tu
 } else {
 statoHtml += '<div class="result-box ok"><b>Guarigione Attiva riuscita.</b> Tutti i Sintomi risultano curati. La Guarigione Attiva è immediata: non richiede i post della Guarigione Passiva. Per considerare il PG guarito ONGame, la role di cura deve essere stata aperta e <b>PG Malato e PG Guaritore devono aver scritto almeno 1 post a testa</b>; i Parametri verranno poi ripristinati in Scheda alla chiusura della role.</div>';
 }
+}
+const storieAttive=trattabili.map(function(s){return {s:s,t:storiaTentativiAttiviPaziente(s)};}).filter(function(x){return x.t.length>1||x.t.some(function(t){return t.esito==='fail';});});
+if(storieAttive.length){
+statoHtml += '<div class="panel" style="background:#fff;margin-top:14px"><h4>Tentativi di trattamento</h4><ul style="margin-bottom:0">'+storieAttive.map(function(x){const reg=regolaComplicazioneSintomo(x.s);return '<li><b>'+esc(x.s.n)+'</b>: '+x.t.map(function(t){if(t.esito==='ok')return t.numero+'° riuscito';if(t.esito==='fail'){return t.numero+'° fallito'+(reg.tipo==='nessuna'?' — nessuna Complicazione specifica':' — Complicazione: '+esc(reg.testo));}return t.numero+'° in attesa';}).join(' → ')+'</li>';}).join('')+'</ul><p class="muted" style="margin:8px 0 0">I fallimenti precedenti restano registrati: le relative Complicazioni non vengono cancellate da un successivo trattamento riuscito.</p></div>';
 }
 const speciali = scelti.filter(sintomoSenzaRimedioDiretto);
 if(speciali.length){
@@ -2172,6 +2240,7 @@ spesaHtml =
 '</div>';
 }
 body.innerHTML = statoHtml + datiHtml + spesaHtml;
+Array.prototype.forEach.call(body.querySelectorAll('.pz-final-retry'),function(bt){onPress(bt,function(){const sid=bt.getAttribute('data-sid'),ss=SINTOMI_BY_ID[sid];if(!ss)return;if(aggiungiTentativoAttivoPaziente(ss)&&pzStepper){pzStepper.goTo(3);}});});
 if(costo > 0){
 function aggiornaRigaSpesa(){
 const role = document.getElementById('spesa-role').value.trim();
@@ -2192,7 +2261,7 @@ REPARTO MEDIMAGHI — stato
 const medimagoState = {
 guaritori: [], coda: [], causaNota: false,
 classiDiagnosi: new Set(), classiRiconosciute: {},
-sintomiIndividuati: new Set(), sintomiProvenienza: {}, diagActionCounter: 0, refreshCuraEffects:null, refreshListaDiagnosi:null
+sintomiIndividuati: new Set(), sintomiProvenienza: {}, sintomiOffgameBozza:new Set(), diagActionCounter: 0, refreshCuraEffects:null, refreshListaDiagnosi:null
 };
 function fontiClasse(c){ if(!medimagoState.classiRiconosciute[c]){medimagoState.classiRiconosciute[c]=new Set();} return medimagoState.classiRiconosciute[c]; }
 function classeRiconosciuta(c){ return fontiClasse(c).size>0; }
@@ -2200,6 +2269,12 @@ function fontiSintomo(sid){ if(!medimagoState.sintomiProvenienza[sid]){medimagoS
 function eliminaSintomoSeSenzaFonti(sid){ const fs=medimagoState.sintomiProvenienza[sid]; if(fs&&fs.size){return 0;} delete medimagoState.sintomiProvenienza[sid]; medimagoState.sintomiIndividuati.delete(sid); return rimuoviCureDaDiagnosiPerSintomi(new Set([sid])); }
 function impostaFonteClasse(c,fonte,presente){ const set=fontiClasse(c); if(presente){set.add(fonte);SINTOMI.forEach(function(s){if(s.c===c && medimagoState.sintomiIndividuati.has(s.id)){fontiSintomo(s.id).add(fonte);}});return;} set.delete(fonte); if(!set.size){delete medimagoState.classiRiconosciute[c];} SINTOMI.forEach(function(s){if(s.c!==c){return;} const fs=medimagoState.sintomiProvenienza[s.id]; if(fs){fs.delete(fonte);eliminaSintomoSeSenzaFonti(s.id);}}); }
 function registraSintomoRiconosciuto(sid,presente){ const s=SINTOMI_BY_ID[sid]; if(!s){return;} if(!presente){delete medimagoState.sintomiProvenienza[sid];medimagoState.sintomiIndividuati.delete(sid);rimuoviCureDaDiagnosiPerSintomi(new Set([sid]));return;} const fc=fontiClasse(s.c); if(!fc.size){return;} const fs=fontiSintomo(sid);fc.forEach(function(f){fs.add(f);});medimagoState.sintomiIndividuati.add(sid); }
+function impostaFonteSintomo(sid,fonte,presente){ const s=SINTOMI_BY_ID[sid]; if(!s){return;} const fs=fontiSintomo(sid); if(presente){fs.add(fonte);medimagoState.sintomiIndividuati.add(sid);return;} fs.delete(fonte);eliminaSintomoSeSenzaFonti(sid); }
+function impostaFonteClasseSemplice(c,fonte,presente){ const set=fontiClasse(c); if(presente){set.add(fonte);return;} set.delete(fonte);if(!set.size){delete medimagoState.classiRiconosciute[c];} }
+function classeHaSintomiFonte(c,fonte){ return SINTOMI.some(function(s){const fs=medimagoState.sintomiProvenienza[s.id];return s.c===c&&fs&&fs.has(fonte);}); }
+function sintomiDaScoprirePendenti(){ return Array.from(medimagoState.sintomiOffgameBozza||[]).filter(function(id){return SINTOMI_BY_ID[id]&&!medimagoState.sintomiIndividuati.has(id);}); }
+function ricalcolaClassiDiagnosiDaSintomi(){ const cs=new Set();sintomiDaScoprirePendenti().forEach(function(id){const s=SINTOMI_BY_ID[id];if(s){cs.add(s.c);}});medimagoState.classiDiagnosi=cs;return cs; }
+function promuoviSintomiConosciutiOffgameDaDiagnosi(c,fonte){ Array.from(medimagoState.sintomiOffgameBozza||[]).forEach(function(id){const s=SINTOMI_BY_ID[id];if(s&&s.c===c){impostaFonteSintomo(id,fonte,true);}});ricalcolaClassiDiagnosiDaSintomi(); }
 function rimuoviFonteGuaritore(gid){ const fonte='g:'+gid; CLASSI.forEach(function(c){impostaFonteClasse(c,fonte,false);}); }
 let guaritoreCounter = 0;
 
@@ -2216,8 +2291,9 @@ return null;
 function validaDiagnosiInSospeso(){
 const p=diagnosiInSospeso();
 if(p){return 'Completa prima il risultato della Diagnosi '+p.e.classe+' già avviata da '+p.g.nome+'. Inserisci un risultato valido nella stessa riga prima di cambiare fase.';}
-const mancanti=Array.from(medimagoState.classiDiagnosi).filter(function(c){return !classeRiconosciuta(c);});
-if(mancanti.length){return 'Prima di passare alla Cura, ogni Classificazione selezionata deve risultare riconosciuta con successo oppure già nota/comunicata dal Narratore. Mancano: '+mancanti.join(', ')+'.';}
+ricalcolaClassiDiagnosiDaSintomi();
+const mancanti=Array.from(medimagoState.classiDiagnosi);
+if(mancanti.length){return 'Prima di passare alla Cura, i Sintomi selezionati come da scoprire devono essere riconosciuti con successo in Diagnosi oppure spostati tra quelli già noti ONGame. Mancano le Classificazioni: '+mancanti.join(', ')+'.';}
 return true;
 }
 function validaDiagnosiIndietro(){
@@ -2232,7 +2308,7 @@ const steps = [
 { short:"Guaritori", title:"Chi sta curando?", intro:"Aggiungi uno o più PG Guaritori. Ogni profilo conserva Tipo PG, Tecnica, Sapienza, Conoscenze Avanzate e Fatica in modo indipendente.",
 onShow: renderStepGuaritori,
 canLeave:function(){ return medimagoState.guaritori.length ? true : 'Aggiungi almeno un Guaritore prima di continuare.'; } },
-{ short:"Diagnosi", title:"Diagnosi", intro:"Seleziona le Classificazioni presenti nel paziente. Una Diagnosi può comprendere da 1 a 5d40, uno per ciascuna Classificazione effettivamente presente.",
+{ short:"Diagnosi", title:"Diagnosi", intro:"Separa i Sintomi già noti ONGame da quelli che il Medimago deve ancora scoprire. I dadi vengono generati soltanto per le Classificazioni dei Sintomi da scoprire.",
 onShow: renderStepDiagnosi, canLeave: validaDiagnosiInSospeso, canLeaveBack: validaDiagnosiIndietro },
 { short:"Cura", title:"Terapia e Chirurgia", intro:"Aggiungi i Sintomi da trattare. Il tool usa Terapia per X-XXX e Chirurgia per XXXX-XXXXX, verifica i requisiti e calcola un dado per ogni Sintomo.",
 onShow: renderStepCura },
@@ -2730,9 +2806,20 @@ document.getElementById('g-profile-preview').innerHTML =
 
 function renderStepGuaritori(){
 const body = document.getElementById('md_body0');
+const sessionMeta=window.__medSessionMeta||{};
+const sessionName=String(sessionMeta.pgName||'').trim();
+const sessionCase=String(sessionMeta.caseName||'').trim();
+const reuseSessionName=!!sessionName && medimagoState.guaritori.length===0;
+const nameField=reuseSessionName?('<div class="field"><label>PG della sessione</label><div class="pill" id="g-session-name" style="display:inline-flex;padding:9px 14px">'+esc(sessionName)+'</div><input type="hidden" id="g-nome"></div>'):'<div class="field"><label>Nome del Guaritore aggiuntivo</label><input type="text" id="g-nome" placeholder="Es. Mira Ashwood"></div>';
+const hasExisting=medimagoState.guaritori.length>0;
+const formOpen=hasExisting?'<details class="rule-details" style="margin-top:14px"><summary>+ Aggiungi un altro Guaritore</summary><div class="rule-details-body">':'';
+const formClose=hasExisting?'</div></details>':'';
 body.innerHTML =
+(sessionName?'<div class="phase-summary"><b>Sessione:</b> '+esc(sessionName)+(sessionCase?' • '+esc(sessionCase):'')+'</div>':'')+
+(hasExisting?'<div class="panel" style="background:#fff"><h4>Guaritore già confermato</h4><p class="muted" style="margin:0">Il profilo resta salvato quando ti sposti fra Diagnosi, Cura e Riepilogo.</p><div id="g-lista" style="margin-top:12px"></div></div>':'')+
+formOpen+
 '<div class="panel" style="background:#fff">'+
-'<div class="grid2"><div class="field"><label>Nome del PG</label><input type="text" id="g-nome" placeholder="Es. Mira Ashwood"></div>'+
+'<div class="grid2">'+nameField+
 '<div class="field"><label>Tecnica (valore base)</label><input type="number" id="g-tecnica" value="0" min="0" step="1"></div></div>'+
 '<div class="prep-block"><div class="prep-title">Profilo Medimagico</div>'+
 '<div class="seg" id="g-tipo-seg"><label class="on"><input type="radio" name="g-tipo" value="studente" checked>Studente</label><label><input type="radio" name="g-tipo" value="adulto">Adulto</label></div>'+
@@ -2749,9 +2836,10 @@ body.innerHTML =
 '<div class="med-preset-picker"><div class="field"><label>Scegli dal regolamento</label><select id="g-effect-preset"></select></div><button type="button" class="btn small gold" id="g-effect-preset-add">+ Inserisci</button></div>'+
 '<p class="med-preset-help">Magi Biografia e Talismano usano il bonus già ottenuto. Per Manualità, Omnis, Medimazoo e Nihil scegli l’esito dopo averlo determinato nel Generatore di Riuscita.</p>'+
 '<div id="g-effects-list"></div><div id="g-effect-warn" class="step-warning"></div></div>'+
-'<div style="margin-top:14px"><button type="button" class="btn gold" id="g-add">Conferma Guaritore</button></div></div>'+
-'<div id="g-lista" style="margin-top:16px"></div>';
+'<div style="margin-top:14px"><button type="button" class="btn gold" id="g-add">Conferma Guaritore</button></div></div>'+formClose+
+(hasExisting?'':'<div id="g-lista" style="margin-top:16px"></div>');
 setupNumericInputs(body);
+if(reuseSessionName){document.getElementById('g-nome').value=sessionName;}
 const effectsHost=document.getElementById('g-effects-list');
 const effectPresetSel=document.getElementById('g-effect-preset');
 medRefreshPresetPickerUI();
@@ -2785,7 +2873,7 @@ tipo:pr.tipo,sapienza:pr.sapienza,diagnosta:pr.diagnosta,terapista:pr.terapista,
 diagBase:pr.diagBase,diagLabel:pr.diagLabel,terBase:pr.terBase,terLabel:pr.terLabel,chiBase:pr.chiBase,chiLabel:pr.chiLabel,
 sap25diag:pr.sapienza>=25,sap25ter:pr.sapienza>=25,sap25chi:pr.sapienza>=25,
 fatica:-storicoFatica,esiti:[],diagCharges:{},effects:effects});
-document.getElementById('g-nome').value=''; effectsHost.innerHTML=''; renderListaGuaritori(); aggiornaFormProfiloGuaritore();
+if(reuseSessionName){renderStepGuaritori();}else{document.getElementById('g-nome').value=''; effectsHost.innerHTML=''; renderListaGuaritori(); aggiornaFormProfiloGuaritore();}
 });
 renderListaGuaritori();
 }
@@ -2802,7 +2890,7 @@ return '<div class="guaritore-card"><span class="nome">'+esc(g.nome)+'</span><sp
 Array.prototype.forEach.call(wrap.querySelectorAll('.x'),function(x){onPress(x,function(){
 const idx=parseInt(x.getAttribute('data-i'),10); const gid=medimagoState.guaritori[idx].id;
 rimuoviFonteGuaritore(gid); medimagoState.guaritori.splice(idx,1);
-medimagoState.coda=medimagoState.coda.filter(function(it){return it.guaritoreId!==gid;}); renderListaGuaritori();
+medimagoState.coda=medimagoState.coda.filter(function(it){return it.guaritoreId!==gid;}); if(!medimagoState.guaritori.length && window.__medSessionMeta && window.__medSessionMeta.pgName){renderStepGuaritori();}else{renderListaGuaritori();}
 });});
 }
 
@@ -2838,7 +2926,7 @@ const insieme = ids instanceof Set ? ids : new Set(ids || []);
 let rimossi = 0;
 for(let i=medimagoState.coda.length-1;i>=0;i--){
 const item=medimagoState.coda[i];
-if(item.origine!=='diagnosi' || !insieme.has(item.sid)){continue;}
+if((item.origine!=='diagnosi' && item.origine!=='ongame') || !insieme.has(item.sid)){continue;}
 const g=medimagoState.guaritori.find(function(x){return x.id===item.guaritoreId;});
 if(g && item.entryRef){
 if(item.faticaAddebitata || (item.entryRef && item.entryRef.faticaAddebitata)){g.fatica-=item.entryRef.fatica;}
@@ -2879,123 +2967,88 @@ if(calc){calc.setAttribute('data-used','1');calc.disabled=true;}
 function renderStepDiagnosi(){
 const body = document.getElementById('md_body1');
 if(!medimagoState.guaritori.length){ body.innerHTML='<p class="muted">Torna al passo precedente e aggiungi almeno un Guaritore.</p>'; return; }
-let checks='';
-CLASSI.forEach(function(c){ checks += '<label class="pill" style="margin-right:8px;margin-bottom:8px;display:inline-flex"><input type="checkbox" class="diag-classe" value="'+c+'" style="margin-right:6px"'+(medimagoState.classiDiagnosi.has(c)?' checked':'')+'> '+c+'</label>'; });
+ricalcolaClassiDiagnosiDaSintomi();
+const classOptions='<option value="">— Scegli la Classificazione —</option>'+CLASSI.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('');
 body.innerHTML =
-'<div class="phase-summary"><b>Diagnosi:</b> da 1 a 5d40 • -2 Fatica per azione (0 con Sapienza 25) • auto-diagnosi -20% • autoconclusiva da 40 • Conoscenze Medimagiche max +5</div>'+
-'<details class="rule-details"><summary>Regole, bonus e causa della malattia</summary><div class="rule-details-body">Una singola azione può comprendere un d40 per ciascuna Classificazione presente; nello stesso blocco la Fatica base si paga una sola volta. Un nuovo tentativo dopo un errore è una nuova azione.<br><br><b>Oggetti/Conoscenze:</b> i bonus generali alla Tecnica sono inclusi automaticamente. I bonus specifici si scelgono per la singola Classificazione; parametro prima, possibilità dopo, con massimo <b>+5 complessivi</b>. Usi e Fatica vengono consumati una sola volta per la stessa azione.<br><br><b>Causa/malattia:</b> se ancora sconosciuta, diventa nota individuando almeno il <b>60% dei Sintomi totali</b>. Questa percentuale non viene calcolata automaticamente perché il tool registra solo i Sintomi riconosciuti.</div></details>'+
-'<div style="margin:0 0 10px">'+checks+'</div>'+
+'<p class="step-intro">Prima indica quali Sintomi sono già noti ONGame al Medimago e quali devono ancora essere scoperti. I dadi di Diagnosi vengono preparati esclusivamente per i Sintomi inseriti in <b>Sintomi da scoprire</b>.</p>'+
+'<details class="rule-details diag-known-ongame"><summary>Sintomi già noti ONGame</summary><div class="rule-details-body">'+
+'<p class="muted" style="margin-top:0">Usa questa sezione solo se il personaggio conosce già ONGame il Sintomo: per esempio perché lo ha comunicato il Narratore, è stato riconosciuto in una quest o era già stato diagnosticato in una role precedente. Questi Sintomi <b>non generano dadi di Diagnosi</b>.</p>'+
+'<div class="narrator-paste-box" style="margin:0 0 12px"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi</h4><textarea id="diag-known-paste" placeholder="Esempio: Graffi, Vertigini e Debolezza Muscolare\noppure: XX: fratture, vertigine"></textarea>'+
+'<div class="narrator-paste-actions"><button type="button" class="btn small gold" id="diag-known-paste-apply">Riconosci e aggiungi</button><span class="muted">Nomi approssimativi e X/xx/Xx sono accettati.</span></div><div id="diag-known-paste-result" class="narrator-paste-result"></div></div>'+
+'<div class="sym-entry-tools"><div class="field"><label>1. Classificazione</label><select id="diag-known-class">'+classOptions+'</select></div><div class="field searchbar" style="margin-bottom:0"><label>2. Scrivi o cerca un Sintomo</label><input type="text" id="diag-known-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div></div><div class="sym-list" id="diag-known-list"></div>'+
+'<div id="diag-known-summary" class="diag-known-state"></div></div></details>'+
+'<details class="rule-details diag-to-discover"><summary>Sintomi da scoprire</summary><div class="rule-details-body">'+
+'<p class="muted" style="margin-top:0">Inserisci qui i Sintomi che conosci come giocatore ma che il Medimago <b>non conosce ancora ONGame</b>. Soltanto questi Sintomi determinano le Classificazioni per cui verranno generati i dadi di Diagnosi.</p>'+
+'<div class="narrator-paste-box" style="margin:0 0 12px"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi</h4><textarea id="diag-discover-paste" placeholder="Esempio: Graffi, Vertigini e Debolezza Muscolare\noppure: XX: fratture, vertigine"></textarea>'+
+'<div class="narrator-paste-actions"><button type="button" class="btn small gold" id="diag-discover-paste-apply">Riconosci e aggiungi</button><span class="muted">Nomi approssimativi e X/xx/Xx sono accettati.</span></div><div id="diag-discover-paste-result" class="narrator-paste-result"></div></div>'+
+'<div class="sym-entry-tools"><div class="field"><label>1. Classificazione</label><select id="diag-discover-class">'+classOptions+'</select></div><div class="field searchbar" style="margin-bottom:0"><label>2. Scrivi o cerca un Sintomo</label><input type="text" id="diag-discover-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div></div><div class="sym-list" id="diag-discover-list"></div>'+
+'<div id="diag-discover-summary" class="diag-known-state"></div></div></details>'+
+'<div class="phase-summary"><b>Diagnosi:</b><div>• da 1 a 5d40, uno per ogni Classificazione dei Sintomi da scoprire</div><div>• -2 Fatica per azione (0 con Sapienza 25)</div><div>• auto-diagnosi -20%</div><div>• autoconclusiva da 40</div><div>• Conoscenze Medimagiche max +5</div></div>'+
+'<details class="rule-details"><summary>Regole, bonus e causa della malattia</summary><div class="rule-details-body">Una singola azione può comprendere un d40 per ciascuna Classificazione presente fra i Sintomi da scoprire; nello stesso blocco la Fatica base si paga una sola volta. Un nuovo tentativo dopo un errore è una nuova azione.<br><br><b>Oggetti/Conoscenze:</b> i bonus generali alla Tecnica sono inclusi automaticamente. I bonus specifici si scelgono per la singola Classificazione; parametro prima, possibilità dopo, con massimo <b>+5 complessivi</b>. Usi e Fatica vengono consumati una sola volta per la stessa azione.<br><br><b>Causa/malattia:</b> se ancora sconosciuta, diventa nota individuando almeno il <b>60% dei Sintomi totali</b>. Questa percentuale non viene calcolata automaticamente perché il tool registra solo i Sintomi riconosciuti.</div></details>'+
+'<div class="panel" style="background:#fff"><h4>Dadi di Diagnosi</h4><div id="diag-auto-classes" class="diag-known-state"></div>'+
 '<label><input type="checkbox" id="diag-nota"'+(medimagoState.causaNota?' checked':'')+'> Il PG malato o altri PG conoscono cosa è accaduto (+3 a ogni dado)</label>'+
-'<button type="button" class="btn gold" id="diag-genera" style="margin-top:14px">Genera le righe di Diagnosi</button>'+
-'<div id="diag-dadi" style="margin-top:12px"></div>'+
-'<div class="panel" style="background:#fff;margin-top:20px"><h4>Sintomi individuati</h4>'+
-'<p class="muted">Prima scegli in alto la Classificazione. Poi puoi selezionare i Sintomi, scriverne il nome nella ricerca oppure incollare direttamente quelli comunicati dal Narratore. I Sintomi di una fascia fallita restano bloccati finché la Classificazione non viene riconosciuta o comunicata dal Narratore.</p>'+
-'<div class="narrator-paste-box"><h4><i class="fa-solid fa-paste" aria-hidden="true"></i> Incolla i Sintomi</h4>'+
-'<textarea id="diag-narrator-paste" placeholder="Esempio: XX: fratture, vertigine&#10;XXX&#10;febre"></textarea>'+
-'<div class="narrator-paste-actions"><button type="button" class="btn small gold" id="diag-narrator-apply">Riconosci e aggiungi</button><span class="muted">Le Classificazioni trovate vengono segnate come già note dal Narratore.</span></div>'+
-'<div id="diag-narrator-result" class="narrator-paste-result"></div></div>'+
-'<div class="field searchbar"><label>Scrivi o cerca un Sintomo</label><input type="text" id="diag-ind-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div>'+
-'<div class="sym-list" id="diag-ind-lista" style="max-height:260px"></div><div id="diag-prune-note" class="step-warning"></div></div>';
-const listaInd=document.getElementById('diag-ind-lista'); const searchInd=document.getElementById('diag-ind-search');
-function classiSel(){ return Array.prototype.map.call(body.querySelectorAll('.diag-classe:checked'),function(x){return x.value;}); }
-function renderLista(){
-const cs=classiSel(), q=searchInd.value.trim().toLowerCase();
-if(!cs.length){listaInd.innerHTML='<div class="muted" style="padding:12px 14px">Seleziona prima una o più Classificazioni.</div>';return;}
-let h=''; cs.forEach(function(c){SINTOMI.filter(function(ss){return ss.c===c && sintomoCorrispondeRicerca(ss,q);}).forEach(function(ss){
-const ck=medimagoState.sintomiIndividuati.has(ss.id),abilitata=classeRiconosciuta(c); h+='<div class="sym-row'+(ck?' checked':'')+(abilitata?'':' disabled')+'" data-id="'+ss.id+'"><input type="checkbox"'+(ck?' checked':'')+(abilitata?'':' disabled')+'><span class="class-badge class-'+c+'">'+c+'</span><span class="nm">'+esc(ss.n)+'</span></div>'; });});
-listaInd.innerHTML=h||'<div class="muted" style="padding:12px 14px">Nessun Sintomo corrisponde alla ricerca.</div>';
-Array.prototype.forEach.call(listaInd.querySelectorAll('.sym-row'),function(row){onPress(row,function(ev){
-const box=row.querySelector('input'); if(ev.target.tagName!=='INPUT'){box.checked=!box.checked;} const id=row.getAttribute('data-id');
-if(box.checked){registraSintomoRiconosciuto(id,true);row.classList.add('checked');}else{
-registraSintomoRiconosciuto(id,false);row.classList.remove('checked');
-const rimossi=rimuoviCureDaDiagnosiPerSintomi(new Set([id])); const nota=document.getElementById('diag-prune-note');
-if(nota && rimossi){nota.textContent='Hai rimosso questo Sintomo dalla Diagnosi: '+rimossi+' tentativ'+(rimossi===1?'o':'i')+' aggiunt'+(rimossi===1?'o':'i')+' tramite il bulk diagnostico '+(rimossi===1?'è stato eliminato':'sono stati eliminati')+' e la relativa Fatica è stata restituita. Le cure aggiunte manualmente restano invariate.';}
+'<button type="button" class="btn gold" id="diag-genera" style="margin-top:14px">Genera le righe di Diagnosi</button><div id="diag-dadi" style="margin-top:12px"></div></div>'+
+'<div id="diag-prune-note" class="step-warning"></div>';
+
+const knownList=document.getElementById('diag-known-list'),knownSearch=document.getElementById('diag-known-search'),knownClass=document.getElementById('diag-known-class');
+const discoverList=document.getElementById('diag-discover-list'),discoverSearch=document.getElementById('diag-discover-search'),discoverClass=document.getElementById('diag-discover-class');
+function markDiagRowsStale(msg){ const dadi=document.getElementById('diag-dadi'); if(dadi&&dadi.innerHTML.trim()){dadi.innerHTML='<div class="note"><b>'+msg+'</b> Genera nuovamente le righe di Diagnosi per avere controlli coerenti. Gli eventuali tiri già registrati restano nello storico.</div>';}}
+function refreshClassi(){ricalcolaClassiDiagnosiDaSintomi();const host=document.getElementById('diag-auto-classes');if(!host)return;const cs=Array.from(medimagoState.classiDiagnosi);host.innerHTML=cs.length?('<b>Classificazioni da diagnosticare:</b> '+cs.map(function(c){return '<span class="pill"><span class="class-badge class-'+c+'">'+c+'</span></span>';}).join('')):'<span class="muted">Nessun Sintomo da scoprire selezionato: non verrà generato alcun dado di Diagnosi.</span>';}
+function refreshSummaries(){
+ const knownHost=document.getElementById('diag-known-summary'),discoverHost=document.getElementById('diag-discover-summary');
+ const known=Array.from(medimagoState.sintomiIndividuati).filter(function(id){return SINTOMI_BY_ID[id];});
+ const pending=sintomiDaScoprirePendenti();
+ if(knownHost){knownHost.innerHTML=known.length?('<b>Già noti ONGame:</b> '+known.map(function(id){const s=SINTOMI_BY_ID[id];return '<span class="pill"><span class="class-badge class-'+s.c+'">'+s.c+'</span> '+esc(s.n)+'</span>';}).join('')):'<span class="muted">Nessun Sintomo indicato come già noto ONGame.</span>';}
+ if(discoverHost){discoverHost.innerHTML=pending.length?('<b>Da scoprire:</b> '+pending.map(function(id){const s=SINTOMI_BY_ID[id];return '<span class="pill"><span class="class-badge class-'+s.c+'">'+s.c+'</span> '+esc(s.n)+'</span>';}).join('')):'<span class="muted">Nessun Sintomo da scoprire selezionato.</span>';}
+ refreshClassi();
 }
-});});
+function recalcOngameClass(c){impostaFonteClasseSemplice(c,'ongame',classeHaSintomiFonte(c,'ongame'));}
+function renderKnownList(){
+ const c=knownClass.value,q=knownSearch.value.trim().toLowerCase();if(!c){knownList.innerHTML='<div class="muted" style="padding:12px 14px">Scegli prima la Classificazione.</div>';return;}
+ const rows=SINTOMI.filter(function(s){return s.c===c&&sintomoCorrispondeRicerca(s,q);});let h='';
+ rows.forEach(function(s){const fs=medimagoState.sintomiProvenienza[s.id],direct=!!(fs&&fs.has('ongame')),known=medimagoState.sintomiIndividuati.has(s.id),fromDiagnosis=known&&!direct;h+='<div class="sym-row'+(known?' checked':'')+(fromDiagnosis?' exhausted':'')+'" data-id="'+s.id+'"><input type="checkbox"'+(known?' checked':'')+(fromDiagnosis?' disabled':'')+'><span class="class-badge class-'+c+'">'+c+'</span><span class="nm">'+esc(s.n)+(fromDiagnosis?' <span class="muted">· riconosciuto in Diagnosi</span>':(direct?' <span class="muted">· già noto ONGame</span>':''))+'</span></div>';});
+ knownList.innerHTML=h||'<div class="muted" style="padding:12px 14px">Nessun Sintomo corrisponde alla ricerca.</div>';
+ Array.prototype.forEach.call(knownList.querySelectorAll('.sym-row:not(.exhausted)'),function(row){onPress(row,function(ev){const box=row.querySelector('input');if(ev.target.tagName!=='INPUT'){box.checked=!box.checked;}const id=row.getAttribute('data-id'),s=SINTOMI_BY_ID[id];if(!s)return;const sospesa=diagnosiInSospeso();if(sospesa){box.checked=!box.checked;const w=document.getElementById('md_warn1');if(w){w.textContent=validaDiagnosiInSospeso();}return;}impostaFonteSintomo(id,'ongame',box.checked);recalcOngameClass(s.c);refreshSummaries();renderKnownList();renderDiscoverList();markDiagRowsStale('Sintomi già noti ONGame modificati.');renderStepRiepilogo();});});
 }
-onPress(document.getElementById('diag-narrator-apply'),function(){
-const outRes=document.getElementById('diag-narrator-result');
-const sospesa=diagnosiInSospeso();
-if(sospesa){
-  outRes.className='narrator-paste-result warn';
-  outRes.textContent='Completa o correggi prima il tiro di Diagnosi attualmente in sospeso; poi potrai aggiungere i Sintomi del Narratore.';
-  return;
+function renderDiscoverList(){
+ const c=discoverClass.value,q=discoverSearch.value.trim().toLowerCase();if(!c){discoverList.innerHTML='<div class="muted" style="padding:12px 14px">Scegli prima la Classificazione.</div>';return;}
+ const rows=SINTOMI.filter(function(s){return s.c===c&&sintomoCorrispondeRicerca(s,q);});let h='';
+ rows.forEach(function(s){const known=medimagoState.sintomiIndividuati.has(s.id),selected=medimagoState.sintomiOffgameBozza.has(s.id)&&!known;h+='<div class="sym-row'+(selected?' checked':'')+(known?' exhausted':'')+'" data-id="'+s.id+'"><input type="checkbox"'+(selected?' checked':'')+(known?' disabled':'')+'><span class="class-badge class-'+c+'">'+c+'</span><span class="nm">'+esc(s.n)+(known?' <span class="muted">· già noto ONGame</span>':(selected?' <span class="muted">· da scoprire</span>':''))+'</span></div>';});
+ discoverList.innerHTML=h||'<div class="muted" style="padding:12px 14px">Nessun Sintomo corrisponde alla ricerca.</div>';
+ Array.prototype.forEach.call(discoverList.querySelectorAll('.sym-row:not(.exhausted)'),function(row){onPress(row,function(ev){const box=row.querySelector('input');if(ev.target.tagName!=='INPUT'){box.checked=!box.checked;}const id=row.getAttribute('data-id');const sospesa=diagnosiInSospeso();if(sospesa){box.checked=!box.checked;const w=document.getElementById('md_warn1');if(w){w.textContent=validaDiagnosiInSospeso();}return;}if(box.checked){medimagoState.sintomiOffgameBozza.add(id);}else{medimagoState.sintomiOffgameBozza.delete(id);}refreshSummaries();renderDiscoverList();markDiagRowsStale('Sintomi da scoprire modificati.');renderStepRiepilogo();});});
 }
-const res=analizzaSintomiNarratore(document.getElementById('diag-narrator-paste').value);
-res.matches.forEach(function(x){
-  const c=x.s.c;
-  medimagoState.classiDiagnosi.add(c);
-  const chk=body.querySelector('.diag-classe[value="'+c+'"]');
-  if(chk){chk.checked=true;}
-  impostaFonteClasse(c,'narratore',true);
-  registraSintomoRiconosciuto(x.s.id,true);
-});
-outRes.innerHTML=htmlEsitoIncolla(res);
-outRes.className='narrator-paste-result '+(res.unmatched.length?'warn':'ok');
-if(res.matches.length){
-  const dadiGenerati=document.getElementById('diag-dadi');
-  if(dadiGenerati&&dadiGenerati.innerHTML.trim()){
-    dadiGenerati.innerHTML='<div class="note"><b>Sintomi del Narratore aggiunti.</b> Le Classificazioni corrispondenti sono ora considerate già note: genera nuovamente le righe di Diagnosi per avere controlli coerenti. Gli eventuali tiri già registrati restano nello storico.</div>';
-  }
-  searchInd.value='';
-  renderLista();
-  renderStepRiepilogo();
+function addPaste(mode){
+ const isKnown=mode==='known',ta=document.getElementById(isKnown?'diag-known-paste':'diag-discover-paste'),out=document.getElementById(isKnown?'diag-known-paste-result':'diag-discover-paste-result');
+ const sospesa=diagnosiInSospeso();if(sospesa){out.className='narrator-paste-result warn';out.textContent=validaDiagnosiInSospeso();return;}
+ const res=analizzaSintomiNarratore(ta.value);res.matches.forEach(function(x){const s=x.s;if(isKnown){impostaFonteSintomo(s.id,'ongame',true);recalcOngameClass(s.c);}else if(!medimagoState.sintomiIndividuati.has(s.id)){medimagoState.sintomiOffgameBozza.add(s.id);}});
+ out.innerHTML=htmlEsitoIncolla(res);out.className='narrator-paste-result '+(res.unmatched.length?'warn':'ok');refreshSummaries();renderKnownList();renderDiscoverList();markDiagRowsStale(isKnown?'Sintomi già noti ONGame modificati.':'Sintomi da scoprire modificati.');renderStepRiepilogo();
 }
-});
-medimagoState.refreshListaDiagnosi=renderLista;
-Array.prototype.forEach.call(body.querySelectorAll('.diag-classe'),function(chk){chk.addEventListener('change',function(){
-const sospesa=diagnosiInSospeso();
-if(sospesa){chk.checked=medimagoState.classiDiagnosi.has(chk.value);const warnEl=document.getElementById('md_warn1');if(warnEl){warnEl.textContent=validaDiagnosiInSospeso();}return;}
-if(chk.checked){medimagoState.classiDiagnosi.add(chk.value);} else {
-medimagoState.classiDiagnosi.delete(chk.value); Array.from(fontiClasse(chk.value)).forEach(function(f){impostaFonteClasse(chk.value,f,false);});
-const idsClasse=new Set(); SINTOMI.forEach(function(ss){if(ss.c===chk.value){medimagoState.sintomiIndividuati.delete(ss.id);idsClasse.add(ss.id);}});
-const rimossi=rimuoviCureDaDiagnosiPerSintomi(idsClasse); const nota=document.getElementById('diag-prune-note');
-if(nota && rimossi){nota.textContent='Hai rimosso la Classificazione '+chk.value+' dalla Diagnosi: '+rimossi+' tentativ'+(rimossi===1?'o':'i')+' aggiunt'+(rimossi===1?'o':'i')+' tramite il bulk diagnostico '+(rimossi===1?'è stato eliminato':'sono stati eliminati')+' e la relativa Fatica è stata restituita. Le cure aggiunte manualmente restano invariate.';}
-}
-const dadiGenerati=document.getElementById('diag-dadi'); if(dadiGenerati && dadiGenerati.innerHTML.trim()){dadiGenerati.innerHTML='<div class="note"><b>Classificazioni modificate.</b> Le righe di Diagnosi generate in precedenza non corrispondono più alla selezione attuale: premi di nuovo “Genera le righe di Diagnosi”. Gli eventuali tiri già registrati restano nello storico del Guaritore.</div>';}
-renderLista();
-});});
-searchInd.addEventListener('input',renderLista); renderLista();
-document.getElementById('diag-nota').addEventListener('change',function(ev){
-const sospesa=diagnosiInSospeso(); if(sospesa){ev.target.checked=medimagoState.causaNota;const warnEl=document.getElementById('md_warn1');if(warnEl){warnEl.textContent=validaDiagnosiInSospeso();}return;}
-medimagoState.causaNota=ev.target.checked; const dadiGenerati=document.getElementById('diag-dadi'); if(dadiGenerati && dadiGenerati.innerHTML.trim()){dadiGenerati.innerHTML='<div class="note"><b>Conoscenza della causa modificata.</b> Le righe di Diagnosi generate in precedenza non corrispondono più alla situazione attuale: premi di nuovo “Genera le righe di Diagnosi”. Gli eventuali tiri già registrati restano nello storico del Guaritore.</div>';}
-});
+onPress(document.getElementById('diag-known-paste-apply'),function(){addPaste('known');});onPress(document.getElementById('diag-discover-paste-apply'),function(){addPaste('discover');});
+knownClass.addEventListener('change',renderKnownList);knownSearch.addEventListener('input',renderKnownList);discoverClass.addEventListener('change',renderDiscoverList);discoverSearch.addEventListener('input',renderDiscoverList);
+renderKnownList();renderDiscoverList();refreshSummaries();medimagoState.refreshListaDiagnosi=function(){refreshSummaries();renderKnownList();renderDiscoverList();};
+
+document.getElementById('diag-nota').addEventListener('change',function(ev){const sospesa=diagnosiInSospeso();if(sospesa){ev.target.checked=medimagoState.causaNota;const warnEl=document.getElementById('md_warn1');if(warnEl){warnEl.textContent=validaDiagnosiInSospeso();}return;}medimagoState.causaNota=ev.target.checked;markDiagRowsStale('Conoscenza della causa modificata.');});
 
 onPress(document.getElementById('diag-genera'),function(){
-const cs=classiSel(); const out=document.getElementById('diag-dadi'); const sospesa=diagnosiInSospeso();
-if(sospesa){const warnEl=document.getElementById('md_warn1');if(warnEl){warnEl.textContent=validaDiagnosiInSospeso();}return;}
-const warnEl=document.getElementById('md_warn1');if(warnEl){warnEl.textContent='';}
-if(!cs.length){out.innerHTML='<p class="muted">Seleziona almeno una Classificazione.</p>';return;}
-medimagoState.diagActionCounter += 1; const batch='diagbatch'+medimagoState.diagActionCounter;
-out.innerHTML=cs.map(function(c){return '<div class="panel" style="background:#fff">'+
-'<h4><span class="class-badge class-'+c+'">'+c+'</span> Diagnosi</h4>'+
-'<label><input type="checkbox" class="diag-gia-noto" data-classe="'+c+'"'+(fontiClasse(c).has('narratore')?' checked':'')+'> Classificazione già nota/comunicata dal Narratore: salta il tiro</label>'+
-'<div class="diag-blocco-tiro" id="diag-blocco-'+c+'">'+guaritoreChooserRepeatable('diag-guaritore','classe',c)+
-'<div class="field"><label>Auto-diagnosi</label><label><input type="checkbox" class="diag-self" data-classe="'+c+'"> Applica -20% (arrotondato per difetto)</label></div>'+
-'<div class="effect-box" id="diag-effects-'+c+'"></div><div id="diag-effect-warn-'+c+'" class="step-warning"></div>'+
-'<div id="diag-out-'+c+'" style="margin-top:10px"></div><button type="button" class="btn small ghost diag-calcola" data-classe="'+c+'" data-batch="'+batch+'" style="margin-top:6px">Calcola il dado di Diagnosi</button></div></div>';}).join('');
-function refreshDiagEffects(c){
-const gsel=out.querySelector('.diag-guaritore[data-classe="'+c+'"]'); const g=medimagoState.guaritori.find(function(x){return x.id===gsel.value;});
-renderPhaseEffectChoices(document.getElementById('diag-effects-'+c),g,'diagnosi','diag-'+c,[],batch+'|'+g.id);
-}
-cs.forEach(function(c){refreshDiagEffects(c);const gs=out.querySelector('.diag-guaritore[data-classe="'+c+'"]');if(gs&&gs.tagName==='SELECT'){gs.addEventListener('change',function(){refreshDiagEffects(c);});}});
-Array.prototype.forEach.call(out.querySelectorAll('.diag-gia-noto'),function(chk){chk.addEventListener('change',function(){
-const c=chk.getAttribute('data-classe'),bl=document.getElementById('diag-blocco-'+c),id='diag-noto-nota-'+c; let nota=document.getElementById(id); impostaFonteClasse(c,'narratore',chk.checked);
-if(chk.checked){bl.classList.add('hidden'); if(!nota){nota=document.createElement('div');nota.id=id;nota.className='result-box ok';nota.style.marginTop='8px';nota.textContent='Classificazione '+c+' già nota/comunicata dal Narratore: nessun tiro e nessun costo di Diagnosi.';bl.parentNode.insertBefore(nota,bl);}}
-else{bl.classList.remove('hidden');if(nota)nota.remove();} renderLista();
-});});
-Array.prototype.forEach.call(out.querySelectorAll('.diag-calcola'),function(btn){onPress(btn,function(){
-if(btn.getAttribute('data-used')==='1'){return;}
-const c=btn.getAttribute('data-classe'),gsel=out.querySelector('.diag-guaritore[data-classe="'+c+'"]'),g=medimagoState.guaritori.find(function(x){return x.id===gsel.value;});
-const selfEl=out.querySelector('.diag-self[data-classe="'+c+'"]'); const effectHost=document.getElementById('diag-effects-'+c); const effectIds=selectedEffectIds(effectHost); const actionKey=btn.getAttribute('data-batch')+'|'+g.id;
-const fallimentoPrecedente=ultimoFallimentoDiagnosiNonRavveduto(g,c);
-if(fallimentoPrecedente){const zona=document.getElementById('diag-out-'+c);zona.innerHTML='<div class="result-box grave"><b>Ritentativo non ancora disponibile.</b><br>'+esc(g.nome)+' ha già fallito una Diagnosi '+c+' e deve prima accorgersi dell’errore con il 1d30 previsto dal regolamento.</div>';mostraRavvedimento(g,c,fallimentoPrecedente);return;}
-const res=reserveEffects(g,'diagnosi',effectIds,actionKey); const ew=document.getElementById('diag-effect-warn-'+c); if(!res.ok){ew.textContent=res.error;return;} ew.textContent='';
-eseguiTentativoDiagnosi(g,c,{effectIds:effectIds,chargeKey:actionKey,self:selfEl&&selfEl.checked}); bloccaControlliRigaDiagnosi(out,c);
-});});
+ ricalcolaClassiDiagnosiDaSintomi();const cs=Array.from(medimagoState.classiDiagnosi),out=document.getElementById('diag-dadi'),sospesa=diagnosiInSospeso();
+ if(sospesa){const warnEl=document.getElementById('md_warn1');if(warnEl){warnEl.textContent=validaDiagnosiInSospeso();}return;}const warnEl=document.getElementById('md_warn1');if(warnEl){warnEl.textContent='';}
+ if(!cs.length){out.innerHTML='<p class="muted">Non hai selezionato alcun Sintomo da scoprire. Non è necessario lanciare dadi di Diagnosi.</p>';return;}
+ medimagoState.diagActionCounter += 1;const batch='diagbatch'+medimagoState.diagActionCounter;
+ out.innerHTML=cs.map(function(c){
+   return '<div class="panel" style="background:#fff"><h4><span class="class-badge class-'+c+'">'+c+'</span> Diagnosi</h4><div class="diag-blocco-tiro" id="diag-blocco-'+c+'">'+guaritoreChooserRepeatable('diag-guaritore','classe',c)+
+   '<div class="field"><label>Auto-diagnosi</label><label><input type="checkbox" class="diag-self" data-classe="'+c+'"> Applica -20% (arrotondato per difetto)</label></div>'+
+   '<div class="effect-box" id="diag-effects-'+c+'"></div><div id="diag-effect-warn-'+c+'" class="step-warning"></div><div id="diag-out-'+c+'" style="margin-top:10px"></div><button type="button" class="btn small ghost diag-calcola" data-classe="'+c+'" data-batch="'+batch+'" style="margin-top:6px">Calcola il dado di Diagnosi</button></div></div>';
+ }).join('');
+ function refreshDiagEffects(c){const gsel=out.querySelector('.diag-guaritore[data-classe="'+c+'"]');if(!gsel)return;const g=medimagoState.guaritori.find(function(x){return x.id===gsel.value;});renderPhaseEffectChoices(document.getElementById('diag-effects-'+c),g,'diagnosi','diag-'+c,[],batch+'|'+g.id);}
+ cs.forEach(function(c){const gs=out.querySelector('.diag-guaritore[data-classe="'+c+'"]');if(!gs)return;refreshDiagEffects(c);if(gs.tagName==='SELECT'){gs.addEventListener('change',function(){refreshDiagEffects(c);});}});
+ Array.prototype.forEach.call(out.querySelectorAll('.diag-calcola'),function(btn){onPress(btn,function(){
+   if(btn.getAttribute('data-used')==='1'){return;}const c=btn.getAttribute('data-classe'),gsel=out.querySelector('.diag-guaritore[data-classe="'+c+'"]'),g=medimagoState.guaritori.find(function(x){return x.id===gsel.value;});
+   const selfEl=out.querySelector('.diag-self[data-classe="'+c+'"]'),effectHost=document.getElementById('diag-effects-'+c),effectIds=selectedEffectIds(effectHost),actionKey=btn.getAttribute('data-batch')+'|'+g.id;
+   const fallimentoPrecedente=ultimoFallimentoDiagnosiNonRavveduto(g,c);if(fallimentoPrecedente){const zona=document.getElementById('diag-out-'+c);zona.innerHTML='<div class="result-box grave"><b>Ritentativo non ancora disponibile.</b><br>'+esc(g.nome)+' ha già fallito una Diagnosi '+c+' e deve prima accorgersi dell’errore con il 1d30 previsto dal regolamento.</div>';mostraRavvedimento(g,c,fallimentoPrecedente);return;}
+   const res=reserveEffects(g,'diagnosi',effectIds,actionKey),ew=document.getElementById('diag-effect-warn-'+c);if(!res.ok){ew.textContent=res.error;return;}ew.textContent='';eseguiTentativoDiagnosi(g,c,{effectIds:effectIds,chargeKey:actionKey,self:selfEl&&selfEl.checked});bloccaControlliRigaDiagnosi(out,c);
+ });});
 });
 }
-
 function livelloDiagnostaPosseduto(g){ return g.diagnosta || 0; }
 function addebitaDiagnosiBase(g,key){
 if(!g.diagCharges){g.diagCharges={};}
@@ -3018,9 +3071,9 @@ g.esiti.push(entryRef); renderStepRiepilogo();
 renderDiceCheck(out,{faces:40,autoAtOrAbove:true,addends:addends,successLabel:'Riconosce tutti i Sintomi '+c,onConfirm:function(r,esito,totale,isCorrection){
 if(!entryRef.faticaAddebitata){const base=addebitaDiagnosiBase(g,key);const eff=consumeEffects(g,'diagnosi',ids,key);entryRef.faticaBase=base;entryRef.faticaEffetti=eff.delta;entryRef.fatica=base+eff.delta;entryRef.faticaAddebitata=true;entryRef.effetti=eff.effects;}
 const precedente=entryRef.esito; entryRef.esito=esito; if(precedente!==esito){entryRef.ravvedimento=null;}
-impostaFonteClasse(c,fonte,esito!=='fail'); renderStepRiepilogo(); if(typeof medimagoState.refreshListaDiagnosi==='function'){medimagoState.refreshListaDiagnosi();}
+impostaFonteClasse(c,fonte,esito!=='fail'); if(esito!=='fail'){promuoviSintomiConosciutiOffgameDaDiagnosi(c,fonte);} ricalcolaClassiDiagnosiDaSintomi(); renderStepRiepilogo(); if(typeof medimagoState.refreshListaDiagnosi==='function'){medimagoState.refreshListaDiagnosi();}
 if(esito==='fail'){mostraRavvedimento(g,c,entryRef);} else { const rv=document.getElementById('diag-ravv-'+c); if(rv){rv.innerHTML='';} }
-},onInvalidate:function(){entryRef.esito=null;entryRef.ravvedimento=null;impostaFonteClasse(c,fonte,false);renderStepRiepilogo();if(typeof medimagoState.refreshListaDiagnosi==='function'){medimagoState.refreshListaDiagnosi();}const rv=document.getElementById('diag-ravv-'+c); if(rv){rv.innerHTML='';}}
+},onInvalidate:function(){entryRef.esito=null;entryRef.ravvedimento=null;impostaFonteClasse(c,fonte,false);ricalcolaClassiDiagnosiDaSintomi();renderStepRiepilogo();if(typeof medimagoState.refreshListaDiagnosi==='function'){medimagoState.refreshListaDiagnosi();}const rv=document.getElementById('diag-ravv-'+c); if(rv){rv.innerHTML='';}}
 });
 }
 function mostraRavvedimento(g,c,fallimentoEntry){
@@ -3067,13 +3120,32 @@ return {s:ss,g:g,grave:grave,phase:phase,blocked:false,forceFail:false,faces:fac
 function renderStepCura(){
 const body=document.getElementById('md_body2');
 if(!medimagoState.guaritori.length){body.innerHTML='<p class="muted">Aggiungi prima almeno un Guaritore.</p>';return;}
-const individuati=Array.from(medimagoState.sintomiIndividuati).filter(function(id){return SINTOMI_BY_ID[id];}); const opzioniSintomi=SINTOMI.map(function(ss){return '<option value="'+ss.id+'">'+ss.c+' — '+esc(ss.n)+'</option>';}).join('');
-let bulkHtml=''; if(individuati.length){bulkHtml='<div class="panel" style="background:#fff"><h4>Sintomi riconosciuti nella Diagnosi</h4><p class="muted">'+individuati.map(function(id){const x=SINTOMI_BY_ID[id];return x.c+' '+esc(x.n);}).join(' • ')+'</p><p class="note">Configura ogni Sintomo singolarmente: Guaritore, Pozione, Oggetti/Conoscenze e auto-cura possono cambiare da un trattamento all’altro.</p></div>';}
+const individuati=Array.from(medimagoState.sintomiIndividuati).filter(function(id){return SINTOMI_BY_ID[id];});
+const opzioniSintomi=SINTOMI.map(function(ss){return '<option value="'+ss.id+'">'+ss.c+' — '+esc(ss.n)+'</option>';}).join('');
+function statoImportCura(sid){
+ const tent=medimagoState.coda.filter(function(it){return it.sid===sid;}),ss=SINTOMI_BY_ID[sid];
+ if(sintomoSenzaRimedioDiretto(ss)){return {txt:'Gestione speciale da scheda',cls:'muted',button:false};}
+ if(!tent.length){return {txt:'Da configurare',cls:'muted',button:true};}
+ const last=tent[tent.length-1];
+ if(last.esito===null){return {txt:'Tentativo in attesa di risultato',cls:'muted',button:false};}
+ if(last.esito==='fail'){return {txt:'Ultimo tentativo fallito — ritenta dalla scheda sotto',cls:'fail',button:false};}
+ return {txt:'Trattamento riuscito',cls:'success',button:false};
+}
+function gruppoImportCura(title,ids){
+ if(!ids.length){return '<div class="cura-import-group"><h4>'+title+'</h4><p class="muted">Nessun Sintomo riconosciuto per questa fase.</p></div>';}
+ return '<div class="cura-import-group"><h4>'+title+'</h4>'+ids.map(function(id){const s=SINTOMI_BY_ID[id],st=statoImportCura(id);return '<div class="cura-import-row"><span class="class-badge class-'+s.c+'">'+s.c+'</span><span class="nm">'+esc(s.n)+'</span><span class="status '+st.cls+'">'+st.txt+'</span>'+(st.button?'<button type="button" class="btn small ghost cura-import-config" data-sid="'+id+'">Configura</button>':'')+'</div>';}).join('')+'</div>';
+}
+const terapiaInd=individuati.filter(function(id){return !isGrave(SINTOMI_BY_ID[id].c);});
+const chirurgiaInd=individuati.filter(function(id){return isGrave(SINTOMI_BY_ID[id].c);});
+let bulkHtml='';
+if(individuati.length){bulkHtml='<div class="panel" style="background:#fff"><h4>Sintomi noti ONGame</h4><p class="muted">I Sintomi riconosciuti con successo in Diagnosi o dichiarati già noti ONGame sono già divisi nella fase corretta. Non devi cercarli o reinserirli: usa “Configura” per impostare Guaritore, Componenti, eventuale Pozione e bonus.</p><div class="cura-import-groups">'+gruppoImportCura('Terapia · X–XXX',terapiaInd)+gruppoImportCura('Chirurgia · XXXX–XXXXX',chirurgiaInd)+'</div></div>';}
+else{bulkHtml='<div class="panel" style="background:#fff"><h4>Sintomi noti ONGame</h4><p class="muted">Nessun Sintomo è ancora noto ONGame. Puoi riconoscerlo con la Diagnosi, dichiararlo già noto ONGame oppure usare l’inserimento manuale più sotto.</p></div>';}
 body.innerHTML=bulkHtml+
-'<div class="phase-summary"><b>Terapia:</b> 1d40, -0,5 Fatica/Sintomo, auto-cura -30%, autoconclusiva da 40 &nbsp; • &nbsp; <b>Chirurgia:</b> 1d35, -1 Fatica/Sintomo, auto-cura -40%, autoconclusiva da 35 &nbsp; • &nbsp; Sapienza 25: Fatica base 0</div>'+
+'<div class="phase-summary-lists"><div class="phase-summary-list"><strong>Terapia</strong><div>• 1d40</div><div>• -0,5 Fatica per Sintomo</div><div>• Auto-cura -30%</div><div>• Autoconclusiva da 40</div></div>'+
+'<div class="phase-summary-list"><strong>Chirurgia</strong><div>• 1d35</div><div>• -1 Fatica per Sintomo</div><div>• Auto-cura -40%</div><div>• Autoconclusiva da 35</div><div>• Sapienza 25: Fatica base 0</div></div></div>'+
 '<details class="rule-details"><summary>Regole complete del trattamento</summary><div class="rule-details-body">Devono essere disponibili tutte le Componenti del Rimedio; se è prevista un’alternativa esplicita, ne basta una. L’Acqua Distillata è sempre ottenibile autoconclusivamente. Tutti i passaggi di un singolo Sintomo possono essere eseguiti nello stesso post.<br><br>Se i passaggi richiedono Incantesimi o Tecniche, non serve un ulteriore tiro e non va aggiunta la loro normale Fatica: sono già compresi nel tiro e nella Fatica di Terapia/Chirurgia.<br><br>I bonus generali alla Tecnica sono automatici; gli Oggetti/Conoscenze specifici si scelgono qui. Il massimo di <b>+5</b> riguarda le Conoscenze Medimagiche della fase; gli Oggetti generici restano separati. Parametro prima, possibilità dopo.</div></details>'+
-'<h4 style="margin-top:20px">Sintomi già aggiunti</h4><div id="cura-coda"></div>'+
-'<button type="button" class="btn ghost" id="cura-toggle-form" style="margin-top:20px">+ Aggiungi Sintomo già noto/comunicato dal Narratore o riconosciuto</button>'+
+'<h4 style="margin-top:20px">Trattamenti</h4><div id="cura-coda"></div>'+
+'<button type="button" class="btn ghost" id="cura-toggle-form" style="margin-top:20px">+ Aggiungi manualmente un altro Sintomo</button>'+
 '<div id="cura-form-wrap" class="hidden" style="margin-top:14px">'+
 '<div class="sym-entry-tools"><div class="field"><label>1. Classificazione</label><select id="cura-class-filter"><option value="">Tutte le Classificazioni</option>'+CLASSI.map(function(c){return '<option value="'+c+'">'+c+'</option>';}).join('')+'</select></div>'+
 '<div class="field searchbar" style="margin-bottom:0"><label>2. Scrivi o cerca un Sintomo</label><input type="text" id="cura-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div></div>'+
@@ -3085,7 +3157,7 @@ body.innerHTML=bulkHtml+
 '<div class="effect-box" id="cura-effects"></div><div id="cura-effect-warn" class="step-warning"></div>'+
 '<div id="cura-anteprima" style="margin:12px 0"></div><div id="cura-form-warn" class="step-warning"></div><button type="button" class="btn gold" id="cura-add">Aggiungi Sintomo da curare</button></div>';
 setupNumericInputs(body);
-onPress(document.getElementById('cura-toggle-form'),function(){const w=document.getElementById('cura-form-wrap'),bt=document.getElementById('cura-toggle-form');w.classList.toggle('hidden');bt.textContent=w.classList.contains('hidden')?'+ Aggiungi Sintomo già noto/comunicato dal Narratore o riconosciuto':'− Nascondi il modulo';});
+onPress(document.getElementById('cura-toggle-form'),function(){const w=document.getElementById('cura-form-wrap'),bt=document.getElementById('cura-toggle-form');w.classList.toggle('hidden');bt.textContent=w.classList.contains('hidden')?'+ Aggiungi manualmente un altro Sintomo':'− Nascondi il modulo';});
 const wrap=document.getElementById('cura-coda'); if(!medimagoState.coda.length){wrap.innerHTML='<p class="muted" id="cura-coda-vuota">Nessun Sintomo aggiunto ancora.</p>';}else{medimagoState.coda.forEach(function(item){aggiungiCardCura(item,item.risultato==null?null:item.risultato);});}
 const curaClassFilter=document.getElementById('cura-class-filter'),curaSearch=document.getElementById('cura-search'),curaSel=document.getElementById('cura-sel');
 function aggiornaOpzioniCura(){
@@ -3117,6 +3189,14 @@ curaSearch.addEventListener('input',function(){aggiornaOpzioniCura();refreshEffe
 ['cura-sel','cura-guaritore'].forEach(function(id){const el=document.getElementById(id);el.addEventListener('change',function(){refreshEffects(false);aggiornaAnteprima();});});
 ['cura-pozione','cura-selfcure'].forEach(function(id){document.getElementById(id).addEventListener('change',aggiornaAnteprima);});
 aggiornaOpzioniCura();refreshEffects(false); aggiornaAnteprima();
+Array.prototype.forEach.call(body.querySelectorAll('.cura-import-config'),function(bt){onPress(bt,function(){
+  const sid=bt.getAttribute('data-sid'),ss=SINTOMI_BY_ID[sid];if(!ss)return;
+  const form=document.getElementById('cura-form-wrap'),toggle=document.getElementById('cura-toggle-form');
+  if(form.classList.contains('hidden')){form.classList.remove('hidden');toggle.textContent='− Nascondi il modulo';}
+  curaClassFilter.value=ss.c;curaSearch.value='';aggiornaOpzioniCura();curaSel.value=sid;refreshEffects(false);aggiornaAnteprima();
+  const warn=document.getElementById('cura-form-warn');if(warn){warn.textContent='Sintomo già noto ONGame: completa soltanto la configurazione del trattamento.';}
+  form.scrollIntoView({behavior:'smooth',block:'start'});
+});});
 
 function creaEAggiungi(sid,gid,poz,usaPozione,self,effectIds,pre,origine){
 const ss=SINTOMI_BY_ID[sid],g=medimagoState.guaritori.find(function(x){return x.id===gid;});curaItemCounter+=1;const uid='ci'+curaItemCounter;const phase=isGrave(ss.c)?'chirurgia':'terapia';const res=reserveEffects(g,phase,effectIds,uid);if(!res.ok){curaItemCounter-=1;return {ok:false,motivo:res.error};}
@@ -3124,8 +3204,13 @@ const info=calcolaDadoCura(sid,gid,poz,usaPozione,self,effectIds,uid); if(info.b
 const costoBaseFatica=info.grave?(g.sap25chi?0:-1):(g.sap25ter?0:-0.5); const plannedEffects=-res.values.effects.reduce(function(s,e){return s+e.fatigue;},0); const costoPianificato=costoBaseFatica+plannedEffects;
 const snapshots=res.values.effects.map(function(e){return {id:e.id,source:e.source,condition:e.condition,phase:e.phase,kind:e.kind,value:e.value,fatigue:e.fatigue};});
 const entry={tipo:info.grave?'Chirurgia':'Terapia',sintomo:ss.n,sid:sid,esito:null,complicazione:null,complicazioneRisultato:null,fatica:0,faticaPianificata:costoPianificato,faticaBase:costoBaseFatica,faticaEffetti:plannedEffects,faticaAddebitata:false,effetti:snapshots};g.esiti.push(entry);
-const item={uid:uid,sid:sid,guaritoreId:gid,pozione:poz,usaPozione:!!usaPozione,selfcure:self,effectIds:effectIds.slice(),effectPhase:phase,origine:origine||'narratore',esito:null,complicazione:null,complicazioneRisultato:null,faticaPianificata:costoPianificato,faticaBase:costoBaseFatica,faticaAddebitata:false,entryRef:entry};medimagoState.coda.push(item);renderStepRiepilogo();const empty=document.getElementById('cura-coda-vuota');if(empty)empty.remove();aggiungiCardCura(item,pre);return {ok:true,motivo:''};
-}
+const item={uid:uid,sid:sid,guaritoreId:gid,pozione:poz,usaPozione:!!usaPozione,selfcure:self,effectIds:effectIds.slice(),effectPhase:phase,origine:origine||'narratore',esito:null,complicazione:null,complicazioneRisultato:null,faticaPianificata:costoPianificato,faticaBase:costoBaseFatica,faticaAddebitata:false,entryRef:entry};medimagoState.coda.push(item);renderStepRiepilogo();const empty=document.getElementById('cura-coda-vuota');if(empty)empty.remove();aggiungiCardCura(item,pre);return {ok:true,motivo:'',item:item};
+ }
+medimagoState.creaRitentativoCura=function(prev){
+if(!prev||prev.esito!=='fail'){return {ok:false,motivo:'Il nuovo tentativo è disponibile soltanto dopo un fallimento già registrato.'};}
+const latest=medimagoState.coda.filter(function(it){return it.sid===prev.sid;}).slice(-1)[0];if(latest!==prev){return {ok:false,motivo:'Esiste già un tentativo successivo per questo Sintomo.'};}
+return creaEAggiungi(prev.sid,prev.guaritoreId,prev.pozione,prev.usaPozione,prev.selfcure,(prev.effectIds||[]).slice(),null,prev.origine||'narratore');
+};
 
 onPress(document.getElementById('cura-add'),function(){
 const warn=document.getElementById('cura-form-warn'),sid=document.getElementById('cura-sel').value;
@@ -3134,7 +3219,7 @@ const sospeso=medimagoState.coda.find(function(it){return it.sid===sid && it.esi
 if(sospeso){warn.textContent='Esiste già un tentativo di cura per questo Sintomo con risultato ancora da completare. Correggi o inserisci prima il risultato di quel dado; soltanto dopo potrai aggiungere un vero ritentativo.';return;}
 if(sintomoSenzaRimedioDiretto(SINTOMI_BY_ID[sid])){warn.textContent='Questo Sintomo non possiede un Rimedio diretto e non può essere aggiunto come normale Terapia/Chirurgia.';return;}
 if(!document.getElementById('cura-componenti').checked){warn.textContent='Conferma prima la disponibilità di tutte le Componenti del Rimedio ONGame.';return;} warn.textContent='';
-const ai=document.querySelector('#cura-anteprima-dado input[type=number]');let pre=null;if(ai&&ai.value.length)pre=ai.value; const effectIds=selectedEffectIds(document.getElementById('cura-effects')); const origineCura=medimagoState.sintomiIndividuati.has(sid)?'diagnosi':'narratore';
+const ai=document.querySelector('#cura-anteprima-dado input[type=number]');let pre=null;if(ai&&ai.value.length)pre=ai.value; const effectIds=selectedEffectIds(document.getElementById('cura-effects')); const fsCura=medimagoState.sintomiProvenienza[sid]; const origineCura=(fsCura&&fsCura.has('ongame'))?'ongame':(medimagoState.sintomiIndividuati.has(sid)?'diagnosi':'manuale');
 const esitoAggiunta=creaEAggiungi(sid,document.getElementById('cura-guaritore').value,document.getElementById('cura-pozione').value,document.getElementById('cura-usa-pozione').checked,document.getElementById('cura-selfcure').checked,effectIds,pre,origineCura);
 if(!esitoAggiunta.ok){warn.textContent=esitoAggiunta.motivo;return;}
 document.getElementById('cura-pozione').value='no';document.getElementById('cura-usa-pozione').checked=false;document.getElementById('cura-pozione').disabled=true;document.getElementById('cura-selfcure').checked=false;document.getElementById('cura-componenti').checked=false;refreshEffects(false);aggiornaAnteprima();
@@ -3156,12 +3241,33 @@ if(item.entryRef){item.entryRef.complicazione=stato;item.entryRef.complicazioneR
 if(!silenzioso){renderStepRiepilogo();}
 }
 function ricalcolaComplicazioniCoda(){medimagoState.coda.forEach(function(item){const reg=regolaComplicazioneSintomo(SINTOMI_BY_ID[item.sid]);let stato=null;if(item.esito==='fail'){stato=reg.tipo==='nessuna'?'nessuna':'si';}aggiornaComplicazioneItem(item,stato,null,true);});renderStepRiepilogo();}
+function ultimoTentativoCuraPerSintomo(item){
+if(!item)return false;const pos=medimagoState.coda.indexOf(item);if(pos<0)return false;
+for(let i=pos+1;i<medimagoState.coda.length;i++){if(medimagoState.coda[i].sid===item.sid)return false;}
+return true;
+}
+function appendRitentativoCuraInline(container,item,ss){
+if(!container||!item||item.esito!=='fail'||!ultimoTentativoCuraPerSintomo(item))return;
+const retryInfo=calcolaDadoCura(item.sid,item.guaritoreId,item.pozione,item.usaPozione,item.selfcure,item.effectIds||[],item.uid);
+if(retryInfo.blocked||retryInfo.forceFail){const no=document.createElement('div');no.className='note';no.style.marginTop='10px';no.innerHTML='<b>Nuovo tentativo:</b> con la stessa configurazione il trattamento continuerebbe a essere autoconclusivamente impossibile. Modifica Guaritore/configurazione dal modulo “Aggiungi Sintomo” prima di ritentare.';container.appendChild(no);return;}
+const box=document.createElement('div');box.className='retry-inline';box.style.marginTop='10px';box.innerHTML='<div class="prep-block" style="margin:0;background:#f8fbf8"><div class="prep-title" style="margin-bottom:6px">Nuovo tentativo</div><p class="muted" style="margin:0 0 8px">Riutilizza lo stesso Guaritore e la stessa configurazione del tentativo fallito. Usi dei bonus e Fatica vengono conteggiati di nuovo. Se devi cambiare configurazione, usa il modulo “Aggiungi Sintomo”.</p><label style="display:block;margin-bottom:8px"><input type="checkbox" class="retry-components"> Confermo che Componenti e, se previste, dosi di Pozione sono ancora disponibili.</label><button type="button" class="btn small gold retry-now"><i class="fa-solid fa-rotate-right" aria-hidden="true"></i> Nuovo tentativo</button><div class="step-warning retry-warn" style="margin-top:7px"></div></div>';
+container.appendChild(box);
+const chk=box.querySelector('.retry-components'),bt=box.querySelector('.retry-now'),warn=box.querySelector('.retry-warn');
+onPress(bt,function(){
+if(!chk.checked){warn.textContent='Conferma prima che Componenti e dosi eventualmente necessarie siano ancora disponibili.';return;}
+if(!medimagoState.creaRitentativoCura){warn.textContent='Apri il modulo di Cura e riprova: il generatore del ritentativo non è ancora disponibile.';return;}
+const pending=medimagoState.coda.find(function(it){return it.sid===item.sid&&it.esito===null;});if(pending){warn.textContent='Esiste già un nuovo tentativo in attesa di risultato per questo Sintomo.';return;}
+const res=medimagoState.creaRitentativoCura(item);if(!res||!res.ok){warn.textContent=(res&&res.motivo)||'Impossibile creare il nuovo tentativo.';return;}
+warn.textContent='';aggiornaTutteLeComplicazioniCura();const inp=document.querySelector('#cura-dice-'+res.item.uid+' input[type=number]');if(inp){inp.focus();inp.scrollIntoView({behavior:'smooth',block:'center'});}
+});
+}
 function renderComplicazioneDaStato(container,item,ss){
 if(!container){return;}
 if(item.esito!=='fail'){container.innerHTML='';return;}
 const reg=regolaComplicazioneSintomo(ss);
 if(reg.tipo==='nessuna'){
 container.innerHTML='<div class="result-box" style="margin-top:10px"><b>Trattamento fallito.</b><br>Il Sintomo non è guarito e può essere ritentato. La scheda non indica una Complicazione specifica.</div>';
+appendRitentativoCuraInline(container,item,ss);
 return;
 }
 const ritentativo=haFallimentoPrecedenteStessoSintomo(item);
@@ -3176,8 +3282,10 @@ const tag='[dice=1d5]Complicazione di '+ss.n+': '+reg.testo+'[/dice]';
 extra='<div class="dice-widget" style="margin-top:10px"><div class="muted">Il 1d5 indicato nella scheda si usa nei post in cui il PG ruola la Complicazione.</div><div class="dice-tag" id="'+uid+'_tag">'+esc(tag)+'</div><div class="dice-actions"><button type="button" class="btn small gold" id="'+uid+'_copy">Copia il 1d5 di promemoria</button></div></div>';
 container.innerHTML='<div class="result-box grave" style="margin-top:10px">'+titolo+esc(reg.testo)+'</div>'+regolaRitentativo+limiteAzioni+extra;
 onPress(document.getElementById(uid+'_copy'),function(){copyText(tag,document.getElementById(uid+'_copy'));});
+appendRitentativoCuraInline(container,item,ss);
 }else{
 container.innerHTML='<div class="result-box grave" style="margin-top:10px">'+titolo+esc(reg.testo)+'</div>'+regolaRitentativo+limiteAzioni;
+appendRitentativoCuraInline(container,item,ss);
 }
 }
 function aggiornaTutteLeComplicazioniCura(){ricalcolaComplicazioniCoda();medimagoState.coda.forEach(function(item){renderComplicazioneDaStato(document.getElementById('cura-comp-'+item.uid),item,SINTOMI_BY_ID[item.sid]);});}
@@ -3245,9 +3353,23 @@ AVVIO
 
 /* Ponte verso il gestore Firebase. Converte Set ↔ Array senza salvare il Reparto Pazienti. */
 window.__medSessionBridge={
- collect:function(){function mapSets(o){var x={};Object.keys(o||{}).forEach(function(k){x[k]=Array.from(o[k]||[])});return x}return {guaritori:JSON.parse(JSON.stringify(medimagoState.guaritori||[])),coda:JSON.parse(JSON.stringify(medimagoState.coda||[])),causaNota:!!medimagoState.causaNota,classiDiagnosi:Array.from(medimagoState.classiDiagnosi||[]),classiRiconosciute:mapSets(medimagoState.classiRiconosciute||{}),sintomiIndividuati:Array.from(medimagoState.sintomiIndividuati||[]),sintomiProvenienza:mapSets(medimagoState.sintomiProvenienza||{}),diagActionCounter:Number(medimagoState.diagActionCounter)||0,guaritoreCounter:Number(guaritoreCounter)||0,medEffectCounter:Number(medEffectCounter)||0,currentStep:mdStepper&&mdStepper.getCurrent?mdStepper.getCurrent():0};},
- reset:function(){medimagoState.guaritori=[];medimagoState.coda=[];medimagoState.causaNota=false;medimagoState.classiDiagnosi=new Set();medimagoState.classiRiconosciute={};medimagoState.sintomiIndividuati=new Set();medimagoState.sintomiProvenienza={};medimagoState.diagActionCounter=0;medimagoState.refreshCuraEffects=null;medimagoState.refreshListaDiagnosi=null;guaritoreCounter=0;medEffectCounter=0;mdStepper=null;var w=document.getElementById('med-session-wizard');if(w)w.innerHTML='';},
- apply:function(s){function mapToSets(o){var x={};Object.keys(o||{}).forEach(function(k){x[k]=new Set(Array.isArray(o[k])?o[k]:[])});return x}this.reset();s=s||{};medimagoState.guaritori=Array.isArray(s.guaritori)?JSON.parse(JSON.stringify(s.guaritori)):[];medimagoState.guaritori.forEach(riallineaGuaritoreRegoleDadi);medimagoState.coda=Array.isArray(s.coda)?JSON.parse(JSON.stringify(s.coda)):[];medimagoState.causaNota=!!s.causaNota;medimagoState.classiDiagnosi=new Set(Array.isArray(s.classiDiagnosi)?s.classiDiagnosi:[]);medimagoState.classiRiconosciute=mapToSets(s.classiRiconosciute||{});medimagoState.sintomiIndividuati=new Set(Array.isArray(s.sintomiIndividuati)?s.sintomiIndividuati:[]);medimagoState.sintomiProvenienza=mapToSets(s.sintomiProvenienza||{});medimagoState.diagActionCounter=Math.max(0,Number(s.diagActionCounter)||0);guaritoreCounter=Math.max(0,Number(s.guaritoreCounter)||0);medEffectCounter=Math.max(0,Number(s.medEffectCounter)||0);buildMedimagoWizard(Math.max(0,Number(s.currentStep)||0));},
+ collect:function(){function mapSets(o){var x={};Object.keys(o||{}).forEach(function(k){x[k]=Array.from(o[k]||[])});return x}return {guaritori:JSON.parse(JSON.stringify(medimagoState.guaritori||[])),coda:JSON.parse(JSON.stringify(medimagoState.coda||[])),causaNota:!!medimagoState.causaNota,classiDiagnosi:Array.from(medimagoState.classiDiagnosi||[]),classiRiconosciute:mapSets(medimagoState.classiRiconosciute||{}),sintomiIndividuati:Array.from(medimagoState.sintomiIndividuati||[]),sintomiProvenienza:mapSets(medimagoState.sintomiProvenienza||{}),sintomiOffgameBozza:Array.from(medimagoState.sintomiOffgameBozza||[]),offgameExplicitConfirmation:true,knownOngameSemantics:true,diagActionCounter:Number(medimagoState.diagActionCounter)||0,guaritoreCounter:Number(guaritoreCounter)||0,medEffectCounter:Number(medEffectCounter)||0,currentStep:mdStepper&&mdStepper.getCurrent?mdStepper.getCurrent():0};},
+ reset:function(){medimagoState.guaritori=[];medimagoState.coda=[];medimagoState.causaNota=false;medimagoState.classiDiagnosi=new Set();medimagoState.classiRiconosciute={};medimagoState.sintomiIndividuati=new Set();medimagoState.sintomiProvenienza={};medimagoState.sintomiOffgameBozza=new Set();medimagoState.diagActionCounter=0;medimagoState.refreshCuraEffects=null;medimagoState.refreshListaDiagnosi=null;guaritoreCounter=0;medEffectCounter=0;mdStepper=null;var w=document.getElementById('med-session-wizard');if(w)w.innerHTML='';},
+ apply:function(s){function mapToSets(o){var x={};Object.keys(o||{}).forEach(function(k){x[k]=new Set(Array.isArray(o[k])?o[k]:[])});return x}this.reset();s=s||{};medimagoState.guaritori=Array.isArray(s.guaritori)?JSON.parse(JSON.stringify(s.guaritori)):[];medimagoState.guaritori.forEach(riallineaGuaritoreRegoleDadi);medimagoState.coda=Array.isArray(s.coda)?JSON.parse(JSON.stringify(s.coda)):[];medimagoState.causaNota=!!s.causaNota;medimagoState.classiDiagnosi=new Set(Array.isArray(s.classiDiagnosi)?s.classiDiagnosi:[]);medimagoState.classiRiconosciute=mapToSets(s.classiRiconosciute||{});medimagoState.sintomiIndividuati=new Set(Array.isArray(s.sintomiIndividuati)?s.sintomiIndividuati:[]);medimagoState.sintomiProvenienza=mapToSets(s.sintomiProvenienza||{});medimagoState.sintomiOffgameBozza=new Set(Array.isArray(s.sintomiOffgameBozza)?s.sintomiOffgameBozza:[]);
+/* v49: “OFFGame” indica ora soltanto ciò che conosce il giocatore. La fonte che
+   salta la Diagnosi è invece “ongame”. Migrazione: le vecchie sessioni v46, dove OFFGame
+   veniva applicato automaticamente, tornano a semplice conoscenza OFFGame; le v48, dove
+   la conferma era già esplicita, vengono convertite in “già noto ONGame”. */
+if(s.knownOngameSemantics!==true){
+ if(s.offgameExplicitConfirmation===true){
+  Object.keys(medimagoState.sintomiProvenienza).forEach(function(sid){const fs=medimagoState.sintomiProvenienza[sid];if(!fs||!fs.has('offgame'))return;fs.delete('offgame');fs.add('ongame');medimagoState.sintomiOffgameBozza.add(sid);});
+  Object.keys(medimagoState.classiRiconosciute).forEach(function(c){const fc=medimagoState.classiRiconosciute[c];if(!fc||!fc.has('offgame'))return;fc.delete('offgame');fc.add('ongame');});
+ }else{
+  Object.keys(medimagoState.sintomiProvenienza).forEach(function(sid){const fs=medimagoState.sintomiProvenienza[sid];if(!fs||!fs.has('offgame'))return;fs.delete('offgame');medimagoState.sintomiOffgameBozza.add(sid);if(!fs.size){delete medimagoState.sintomiProvenienza[sid];medimagoState.sintomiIndividuati.delete(sid);}});
+  Object.keys(medimagoState.classiRiconosciute).forEach(function(c){const fc=medimagoState.classiRiconosciute[c];if(!fc)return;fc.delete('offgame');if(!fc.size){delete medimagoState.classiRiconosciute[c];}});
+ }
+}
+medimagoState.diagActionCounter=Math.max(0,Number(s.diagActionCounter)||0);guaritoreCounter=Math.max(0,Number(s.guaritoreCounter)||0);medEffectCounter=Math.max(0,Number(s.medEffectCounter)||0);ricalcolaClassiDiagnosiDaSintomi();buildMedimagoWizard(Math.max(0,Number(s.currentStep)||0));},
  newBlank:function(){this.reset();buildMedimagoWizard(0);},
  phaseLabel:function(i){return ['Guaritori','Diagnosi','Terapia e Chirurgia','Riepilogo'][Math.max(0,Math.min(3,Number(i)||0))]}
 };
@@ -3260,14 +3382,15 @@ buildPazienteWizard();
 
 <script id="med-session-manager-v39">
 (function(){'use strict';
+window.__medSessionMeta=window.__medSessionMeta||{pgName:'',caseName:''};
 var CFG={apiKey:'AIzaSyCvd56bSEL02s2OY2PSk7uyFX-CYRB4Vz0',authDomain:'conteggi-eee1b.firebaseapp.com',projectId:'conteggi-eee1b',storageBucket:'conteggi-eee1b.firebasestorage.app',messagingSenderId:'481320219586',appId:'1:481320219586:web:87e974d618a302adfadc5b'},COLL='sessioni_medimagia',fb={auth:null,db:null,user:null},id='',data=null,loading=false,signing=false,timer=null,chain=Promise.resolve();
 function E(x){return document.getElementById(x)}function B(){return window.__medSessionBridge}function stat(x,m,k){var e=E(x);if(!e)return;e.textContent=m||'';if(x==='med-session-auth-status')e.className='med-session-status'+(k?' '+k:'')}function fmt(v){try{var d=v&&v.toDate?v.toDate():(v&&v.seconds?new Date(v.seconds*1000):null);return d?d.toLocaleString('it-IT'):''}catch(e){return ''}}
 function home(){E('med-session-home').classList.remove('hidden');E('med-session-workspace').classList.add('hidden')}function work(){E('med-session-home').classList.add('hidden');E('med-session-workspace').classList.remove('hidden');E('med-session-save-status').textContent='Sessione caricata · autosalvataggio Firebase attivo ✓';try{window.scrollTo(0,0)}catch(e){}}
 function canSave(){return !loading&&id&&fb.db&&fb.user&&B()}function pay(){var s=B().collect();return {ownerUid:fb.user.uid,pgName:String((data&&data.pgName)||'PG').trim()||'PG',caseName:String((data&&data.caseName)||'').trim(),phaseIndex:s.currentStep,phaseLabel:B().phaseLabel(s.currentStep),status:s.currentStep===3?'riepilogo':'in_corso',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),toolVersion:'medimagia-v39-dadi-medimago',state:s}}
 function save(){if(timer){clearTimeout(timer);timer=null}if(!canSave())return Promise.resolve(true);var my=id,p=pay(),st=E('med-session-save-status');if(st)st.textContent='Salvataggio automatico…';var t=chain.catch(function(){}).then(function(){return fb.db.collection(COLL).doc(my).set(p,{merge:true})}).then(function(){if(my===id){data=Object.assign({},data||{},p);if(st)st.textContent='Salvata automaticamente su Firebase ✓'}return true}).catch(function(e){console.error(e);if(my===id&&st)st.textContent='Errore salvataggio Firebase: '+(e.message||e);throw e});chain=t.catch(function(){});return t}function schedule(){if(!canSave())return;if(timer)clearTimeout(timer);timer=setTimeout(function(){timer=null;save().catch(function(){})},750)}
-function list(){var h=E('med-session-list');if(!h||!fb.db||!fb.user)return;h.innerHTML='<div class="med-session-status">Caricamento sessioni…</div>';fb.db.collection(COLL).where('ownerUid','==',fb.user.uid).get().then(function(s){var a=[];s.forEach(function(d){a.push({id:d.id,data:d.data()||{}})});a.sort(function(x,y){return ((y.data.updatedAt&&y.data.updatedAt.seconds)||0)-((x.data.updatedAt&&x.data.updatedAt.seconds)||0)});h.innerHTML='';if(!a.length){h.innerHTML='<div class="med-session-status">Nessuna sessione Medimago salvata.</div>';return}a.forEach(function(r){var d=r.data,box=document.createElement('div');box.className='med-session-item';var l=document.createElement('div'),t=document.createElement('div');t.className='med-session-title';t.textContent=(d.pgName||'PG')+(d.caseName?' — '+d.caseName:'');l.appendChild(t);var m=document.createElement('div');m.className='med-session-meta';var z=fmt(d.updatedAt);m.textContent='Fase: '+(d.phaseLabel||B().phaseLabel(d.phaseIndex))+(z?' · Aggiornata '+z:'');l.appendChild(m);var ac=document.createElement('div');ac.className='med-session-actions';var rr=document.createElement('button');rr.type='button';rr.className='btn small gold';rr.textContent='Riprendi';rr.addEventListener('click',function(){id=r.id;data=r.data;loading=true;try{B().apply(d.state||{})}finally{loading=false}work()});var x=document.createElement('button');x.type='button';x.className='btn small delete';x.textContent='Elimina';x.addEventListener('click',function(){if(!confirm('Eliminare definitivamente questa sessione Medimago?'))return;fb.db.collection(COLL).doc(r.id).delete().then(list).catch(function(e){stat('med-session-home-msg','Impossibile eliminare: '+(e.message||e),'bad')})});ac.appendChild(rr);ac.appendChild(x);box.appendChild(l);box.appendChild(ac);h.appendChild(box)})}).catch(function(e){console.error(e);h.innerHTML='<div class="med-session-status bad">Impossibile caricare le sessioni: '+String(e.message||e)+'</div>'})}
-function fresh(){var pg=String((E('med-session-pg-name')||{}).value||'').trim(),cas=String((E('med-session-case-name')||{}).value||'').trim();if(!pg){stat('med-session-home-msg','Inserisci il nome del PG prima di creare la sessione.','bad');return}if(!fb.user||!fb.db||!B()){stat('med-session-home-msg','Firebase non è ancora pronto.','bad');return}loading=true;try{B().newBlank()}finally{loading=false}data={pgName:pg,caseName:cas};var s=B().collect(),p={ownerUid:fb.user.uid,pgName:pg,caseName:cas,phaseIndex:0,phaseLabel:'Guaritori',status:'in_corso',createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp(),toolVersion:'medimagia-v39-dadi-medimago',state:s};stat('med-session-home-msg','Creo la nuova sessione…','saving');fb.db.collection(COLL).add(p).then(function(ref){id=ref.id;data=p;stat('med-session-home-msg','','');work()}).catch(function(e){console.error(e);stat('med-session-home-msg','Impossibile creare la sessione: '+(e.message||e),'bad')})}
-function back(){var my=id;(canSave()?save():Promise.resolve(true)).then(function(){if(my===id){id='';data=null}B().reset();home();list()}).catch(function(){})}function del(){if(!id||!fb.db)return;if(!confirm('Eliminare definitivamente questa sessione Medimago? Non potrà essere recuperata.'))return;var my=id;fb.db.collection(COLL).doc(my).delete().then(function(){if(my===id){id='';data=null}B().reset();home();list()}).catch(function(e){E('med-session-save-status').textContent='Impossibile eliminare: '+(e.message||e)})}
+function list(){var h=E('med-session-list');if(!h||!fb.db||!fb.user)return;h.innerHTML='<div class="med-session-status">Caricamento sessioni…</div>';fb.db.collection(COLL).where('ownerUid','==',fb.user.uid).get().then(function(s){var a=[];s.forEach(function(d){a.push({id:d.id,data:d.data()||{}})});a.sort(function(x,y){return ((y.data.updatedAt&&y.data.updatedAt.seconds)||0)-((x.data.updatedAt&&x.data.updatedAt.seconds)||0)});h.innerHTML='';if(!a.length){h.innerHTML='<div class="med-session-status">Nessuna sessione Medimago salvata.</div>';return}a.forEach(function(r){var d=r.data,box=document.createElement('div');box.className='med-session-item';var l=document.createElement('div'),t=document.createElement('div');t.className='med-session-title';t.textContent=(d.pgName||'PG')+(d.caseName?' — '+d.caseName:'');l.appendChild(t);var m=document.createElement('div');m.className='med-session-meta';var z=fmt(d.updatedAt);m.textContent='Fase: '+(d.phaseLabel||B().phaseLabel(d.phaseIndex))+(z?' · Aggiornata '+z:'');l.appendChild(m);var ac=document.createElement('div');ac.className='med-session-actions';var rr=document.createElement('button');rr.type='button';rr.className='btn small gold';rr.textContent='Riprendi';rr.addEventListener('click',function(){id=r.id;data=r.data;window.__medSessionMeta={pgName:String(d.pgName||''),caseName:String(d.caseName||'')};loading=true;try{B().apply(d.state||{})}finally{loading=false}work()});var x=document.createElement('button');x.type='button';x.className='btn small delete';x.textContent='Elimina';x.addEventListener('click',function(){if(!confirm('Eliminare definitivamente questa sessione Medimago?'))return;fb.db.collection(COLL).doc(r.id).delete().then(list).catch(function(e){stat('med-session-home-msg','Impossibile eliminare: '+(e.message||e),'bad')})});ac.appendChild(rr);ac.appendChild(x);box.appendChild(l);box.appendChild(ac);h.appendChild(box)})}).catch(function(e){console.error(e);h.innerHTML='<div class="med-session-status bad">Impossibile caricare le sessioni: '+String(e.message||e)+'</div>'})}
+function fresh(){var pg=String((E('med-session-pg-name')||{}).value||'').trim(),cas=String((E('med-session-case-name')||{}).value||'').trim();if(!pg){stat('med-session-home-msg','Inserisci il nome del PG prima di creare la sessione.','bad');return}if(!fb.user||!fb.db||!B()){stat('med-session-home-msg','Firebase non è ancora pronto.','bad');return}window.__medSessionMeta={pgName:pg,caseName:cas};loading=true;try{B().newBlank()}finally{loading=false}data={pgName:pg,caseName:cas};var s=B().collect(),p={ownerUid:fb.user.uid,pgName:pg,caseName:cas,phaseIndex:0,phaseLabel:'Guaritori',status:'in_corso',createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp(),toolVersion:'medimagia-v39-dadi-medimago',state:s};stat('med-session-home-msg','Creo la nuova sessione…','saving');fb.db.collection(COLL).add(p).then(function(ref){id=ref.id;data=p;stat('med-session-home-msg','','');work()}).catch(function(e){console.error(e);stat('med-session-home-msg','Impossibile creare la sessione: '+(e.message||e),'bad')})}
+function back(){var my=id;(canSave()?save():Promise.resolve(true)).then(function(){if(my===id){id='';data=null}window.__medSessionMeta={pgName:'',caseName:''};B().reset();home();list()}).catch(function(){})}function del(){if(!id||!fb.db)return;if(!confirm('Eliminare definitivamente questa sessione Medimago? Non potrà essere recuperata.'))return;var my=id;fb.db.collection(COLL).doc(my).delete().then(function(){if(my===id){id='';data=null}window.__medSessionMeta={pgName:'',caseName:''};B().reset();home();list()}).catch(function(e){E('med-session-save-status').textContent='Impossibile eliminare: '+(e.message||e)})}
 function init(){home();E('med-session-new').addEventListener('click',fresh);E('med-session-back').addEventListener('click',back);E('med-session-delete-current').addEventListener('click',del);var w=E('med-session-workspace');document.addEventListener('input',function(e){if(w.contains(e.target))schedule()},true);document.addEventListener('change',function(e){if(w.contains(e.target))schedule()},true);document.addEventListener('click',function(e){if(w.contains(e.target))setTimeout(schedule,90)},true);window.addEventListener('pagehide',function(){if(canSave())save().catch(function(){})});document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&canSave())save().catch(function(){})});E('tab-paziente').addEventListener('click',function(){if(canSave())save().catch(function(){})});try{if(typeof firebase==='undefined')throw new Error('SDK Firebase non caricato');if(!firebase.apps.length)firebase.initializeApp(CFG);fb.auth=firebase.auth();fb.db=firebase.firestore();fb.auth.onAuthStateChanged(function(u){if(u){signing=false;fb.user=u;stat('med-session-auth-status','Firebase connesso · sessioni Medimago personali attive ✓','ok');list();return}if(signing)return;signing=true;fb.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function(){return fb.auth.signInAnonymously()}).catch(function(e){signing=false;console.error(e);stat('med-session-auth-status','Errore autenticazione Firebase: '+(e.message||e),'bad')})})}catch(e){console.error(e);stat('med-session-auth-status','Firebase non disponibile: '+(e.message||e),'bad')}}init();
 })();
 </script>
