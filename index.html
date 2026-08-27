@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Medimagia — San Mungo</title>
+<!-- v38: sessioni Firebase esclusivamente per il Reparto Medimaghi; Pazienti sempre effimero -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.0/css/all.min.css');
@@ -600,6 +601,18 @@ body{
 .result-box.grave,.result-box.grave b,.result-box.grave strong{color:#64232c!important;}
 .btn,button{font-weight:700;}
 </style>
+<style id="v38-med-session-css">
+#view-medimago .med-session-home{margin:8px 0 20px;padding:20px 22px;border:2px solid #6d8f7c;border-left:6px solid #4f7964;border-radius:10px;background:#edf2ee;color:#25372e;box-shadow:0 7px 22px rgba(0,0,0,.18)}
+#view-medimago .med-session-home h2{margin:0 0 8px;color:#315c46}.med-session-note{margin:0 0 14px;line-height:1.5;color:#465b50}
+#view-medimago .med-session-create{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}.med-session-create label{display:block;font-size:.78rem;font-weight:800;margin-bottom:4px;color:#315c46}.med-session-create input{width:100%;padding:8px 10px;border:1px solid #7d9b8c;border-radius:6px;background:#fff;color:#1f3027}
+#view-medimago .med-session-status{margin:10px 0;padding:9px 11px;border-radius:6px;background:#dde5df;color:#405349;font-size:.8rem}.med-session-status.ok{background:#dcebdc;color:#2b5734;border:1px solid #779b7c}.med-session-status.bad{background:#f0d9dc;color:#6b2932;border:1px solid #b86c76}.med-session-status.saving{background:#ece6ce;color:#665322;border:1px solid #b5a271}
+#view-medimago .med-session-list{display:grid;gap:9px;margin-top:13px}.med-session-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 12px;border:1px solid #9eb0a6;border-radius:8px;background:#fff}.med-session-title{font-weight:900;color:#315c46}.med-session-meta{margin-top:3px;font-size:.74rem;color:#607068}.med-session-actions{display:flex;gap:7px;flex-wrap:wrap}.med-session-actions .delete{background:#7b2f3b!important;border-color:#9e4a57!important;color:#fff!important}
+#view-medimago .med-session-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 14px;padding:10px 12px;border:1px solid #668775;border-radius:8px;background:#213c30;color:#edf6f0}.med-session-toolbar>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.med-session-toolbar .delete-session{background:#7b2f3b!important;border-color:#a0525f!important;color:#fff!important}#med-session-save-status{font-size:.78rem;font-weight:700}
+@media(max-width:700px){#view-medimago .med-session-create{grid-template-columns:1fr}.med-session-item{align-items:flex-start;flex-direction:column}}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -609,7 +622,7 @@ body{
 <div class="brand">
 <h1>Ospedale San Mungo per le Malattie e le Ferite Magiche</h1>
 <p>Strumento di gestione Medimagica — Felix Felicis GdR</p>
-<p class="muted" style="margin-top:4px;font-size:12px">La pagina riparte vuota a ogni refresh: i dati restano disponibili soltanto durante la sessione corrente.</p>
+<p class="muted" style="margin-top:4px;font-size:12px">Il Reparto Pazienti riparte vuoto a ogni refresh. Il Reparto Medimaghi usa sessioni Firebase salvate, da riprendere esplicitamente quando servono.</p>
 </div>
 
 <div class="seal-toggle">
@@ -618,7 +631,10 @@ body{
 </div>
 
 <div id="view-paziente"></div>
-<div id="view-medimago" class="hidden"></div>
+<div id="view-medimago" class="hidden">
+<div id="med-session-home" class="med-session-home"><h2>Sessioni Medimagia — Medimaghi</h2><p class="med-session-note">Le sessioni vengono create soltanto nel Reparto Medimaghi. Il Reparto Pazienti non viene salvato su Firebase.</p><div class="med-session-create"><div><label for="med-session-pg-name">Nome del PG</label><input type="text" id="med-session-pg-name" maxlength="120" placeholder="PG Medimago / Guaritore"></div><div><label for="med-session-case-name">Paziente / caso <span class="muted">(facoltativo)</span></label><input type="text" id="med-session-case-name" maxlength="160" placeholder="Es. cura di Harry Potter"></div><button type="button" class="btn gold" id="med-session-new">+ Nuova sessione</button></div><div id="med-session-auth-status" class="med-session-status">Connessione a Firebase…</div><div id="med-session-home-msg"></div><div id="med-session-list" class="med-session-list"></div></div>
+<div id="med-session-workspace" class="hidden"><div class="med-session-toolbar"><div><button type="button" class="btn ghost" id="med-session-back">← Sessioni</button><span id="med-session-save-status">Sessione non ancora caricata.</span></div><div><button type="button" class="btn small delete-session" id="med-session-delete-current">Elimina sessione</button></div></div><div id="med-session-wizard"></div></div>
+</div>
 
 <footer>Cartella clinica generata automaticamente — verifica sempre col Narratore in caso di dubbio.</footer>
 </div>
@@ -1050,6 +1066,7 @@ if(steps[current].onShow){ steps[current].onShow(); }
 return {
 goTo: goTo,
 bodyId: function(i){ return containerId + '_body' + i; },
+getCurrent: function(){ return current; },
 refreshCurrent: function(){ if(steps[current].onShow){ steps[current].onShow(); } }
 };
 }
@@ -1861,8 +1878,8 @@ if(p){return 'Completa prima il risultato della Diagnosi '+p.e.classe+' già avv
 return true;
 }
 
-function buildMedimagoWizard(){
-const root = document.getElementById('view-medimago');
+function buildMedimagoWizard(startAt){
+const root = document.getElementById('med-session-wizard');
 const steps = [
 { short:"Guaritori", title:"Chi sta curando?", intro:"Aggiungi uno o più PG Guaritori. Ogni profilo conserva Tipo PG, Tecnica, Sapienza, Conoscenze Avanzate e Fatica in modo indipendente.",
 onShow: renderStepGuaritori,
@@ -1874,7 +1891,7 @@ onShow: renderStepCura },
 { short:"Riepilogo", title:"Riepilogo", intro:"Fatica spesa da ciascun Guaritore ed esito di Diagnosi, Terapie e Chirurgie.",
 onShow: renderStepRiepilogo }
 ];
-mdStepper = buildStepper(root, 'md', steps, 0);
+mdStepper = buildStepper(root, 'md', steps, Number.isInteger(startAt)?Math.max(0,Math.min(steps.length-1,startAt)):0);
 }
 
 const ROMANI = ["I","II","III","IV","V"];
@@ -2773,8 +2790,33 @@ body.innerHTML = html;
 /* ==========================================================================
 AVVIO
 ========================================================================== */
+
+/* Ponte verso il gestore Firebase. Converte Set ↔ Array senza salvare il Reparto Pazienti. */
+window.__medSessionBridge={
+ collect:function(){function mapSets(o){var x={};Object.keys(o||{}).forEach(function(k){x[k]=Array.from(o[k]||[])});return x}return {guaritori:JSON.parse(JSON.stringify(medimagoState.guaritori||[])),coda:JSON.parse(JSON.stringify(medimagoState.coda||[])),causaNota:!!medimagoState.causaNota,classiDiagnosi:Array.from(medimagoState.classiDiagnosi||[]),classiRiconosciute:mapSets(medimagoState.classiRiconosciute||{}),sintomiIndividuati:Array.from(medimagoState.sintomiIndividuati||[]),sintomiProvenienza:mapSets(medimagoState.sintomiProvenienza||{}),diagActionCounter:Number(medimagoState.diagActionCounter)||0,guaritoreCounter:Number(guaritoreCounter)||0,medEffectCounter:Number(medEffectCounter)||0,currentStep:mdStepper&&mdStepper.getCurrent?mdStepper.getCurrent():0};},
+ reset:function(){medimagoState.guaritori=[];medimagoState.coda=[];medimagoState.causaNota=false;medimagoState.classiDiagnosi=new Set();medimagoState.classiRiconosciute={};medimagoState.sintomiIndividuati=new Set();medimagoState.sintomiProvenienza={};medimagoState.diagActionCounter=0;medimagoState.refreshCuraEffects=null;medimagoState.refreshListaDiagnosi=null;guaritoreCounter=0;medEffectCounter=0;mdStepper=null;var w=document.getElementById('med-session-wizard');if(w)w.innerHTML='';},
+ apply:function(s){function mapToSets(o){var x={};Object.keys(o||{}).forEach(function(k){x[k]=new Set(Array.isArray(o[k])?o[k]:[])});return x}this.reset();s=s||{};medimagoState.guaritori=Array.isArray(s.guaritori)?JSON.parse(JSON.stringify(s.guaritori)):[];medimagoState.coda=Array.isArray(s.coda)?JSON.parse(JSON.stringify(s.coda)):[];medimagoState.causaNota=!!s.causaNota;medimagoState.classiDiagnosi=new Set(Array.isArray(s.classiDiagnosi)?s.classiDiagnosi:[]);medimagoState.classiRiconosciute=mapToSets(s.classiRiconosciute||{});medimagoState.sintomiIndividuati=new Set(Array.isArray(s.sintomiIndividuati)?s.sintomiIndividuati:[]);medimagoState.sintomiProvenienza=mapToSets(s.sintomiProvenienza||{});medimagoState.diagActionCounter=Math.max(0,Number(s.diagActionCounter)||0);guaritoreCounter=Math.max(0,Number(s.guaritoreCounter)||0);medEffectCounter=Math.max(0,Number(s.medEffectCounter)||0);buildMedimagoWizard(Math.max(0,Number(s.currentStep)||0));},
+ newBlank:function(){this.reset();buildMedimagoWizard(0);},
+ phaseLabel:function(i){return ['Guaritori','Diagnosi','Terapia e Chirurgia','Riepilogo'][Math.max(0,Math.min(3,Number(i)||0))]}
+};
+
 buildPazienteWizard();
-buildMedimagoWizard();
+
+</script>
+
+
+<script id="med-session-manager-v38">
+(function(){'use strict';
+var CFG={apiKey:'AIzaSyCvd56bSEL02s2OY2PSk7uyFX-CYRB4Vz0',authDomain:'conteggi-eee1b.firebaseapp.com',projectId:'conteggi-eee1b',storageBucket:'conteggi-eee1b.firebasestorage.app',messagingSenderId:'481320219586',appId:'1:481320219586:web:87e974d618a302adfadc5b'},COLL='sessioni_medimagia',fb={auth:null,db:null,user:null},id='',data=null,loading=false,signing=false,timer=null,chain=Promise.resolve();
+function E(x){return document.getElementById(x)}function B(){return window.__medSessionBridge}function stat(x,m,k){var e=E(x);if(!e)return;e.textContent=m||'';if(x==='med-session-auth-status')e.className='med-session-status'+(k?' '+k:'')}function fmt(v){try{var d=v&&v.toDate?v.toDate():(v&&v.seconds?new Date(v.seconds*1000):null);return d?d.toLocaleString('it-IT'):''}catch(e){return ''}}
+function home(){E('med-session-home').classList.remove('hidden');E('med-session-workspace').classList.add('hidden')}function work(){E('med-session-home').classList.add('hidden');E('med-session-workspace').classList.remove('hidden');E('med-session-save-status').textContent='Sessione caricata · autosalvataggio Firebase attivo ✓';try{window.scrollTo(0,0)}catch(e){}}
+function canSave(){return !loading&&id&&fb.db&&fb.user&&B()}function pay(){var s=B().collect();return {ownerUid:fb.user.uid,pgName:String((data&&data.pgName)||'PG').trim()||'PG',caseName:String((data&&data.caseName)||'').trim(),phaseIndex:s.currentStep,phaseLabel:B().phaseLabel(s.currentStep),status:s.currentStep===3?'riepilogo':'in_corso',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),toolVersion:'medimagia-v38-sessioni-medimago',state:s}}
+function save(){if(timer){clearTimeout(timer);timer=null}if(!canSave())return Promise.resolve(true);var my=id,p=pay(),st=E('med-session-save-status');if(st)st.textContent='Salvataggio automatico…';var t=chain.catch(function(){}).then(function(){return fb.db.collection(COLL).doc(my).set(p,{merge:true})}).then(function(){if(my===id){data=Object.assign({},data||{},p);if(st)st.textContent='Salvata automaticamente su Firebase ✓'}return true}).catch(function(e){console.error(e);if(my===id&&st)st.textContent='Errore salvataggio Firebase: '+(e.message||e);throw e});chain=t.catch(function(){});return t}function schedule(){if(!canSave())return;if(timer)clearTimeout(timer);timer=setTimeout(function(){timer=null;save().catch(function(){})},750)}
+function list(){var h=E('med-session-list');if(!h||!fb.db||!fb.user)return;h.innerHTML='<div class="med-session-status">Caricamento sessioni…</div>';fb.db.collection(COLL).where('ownerUid','==',fb.user.uid).get().then(function(s){var a=[];s.forEach(function(d){a.push({id:d.id,data:d.data()||{}})});a.sort(function(x,y){return ((y.data.updatedAt&&y.data.updatedAt.seconds)||0)-((x.data.updatedAt&&x.data.updatedAt.seconds)||0)});h.innerHTML='';if(!a.length){h.innerHTML='<div class="med-session-status">Nessuna sessione Medimago salvata.</div>';return}a.forEach(function(r){var d=r.data,box=document.createElement('div');box.className='med-session-item';var l=document.createElement('div'),t=document.createElement('div');t.className='med-session-title';t.textContent=(d.pgName||'PG')+(d.caseName?' — '+d.caseName:'');l.appendChild(t);var m=document.createElement('div');m.className='med-session-meta';var z=fmt(d.updatedAt);m.textContent='Fase: '+(d.phaseLabel||B().phaseLabel(d.phaseIndex))+(z?' · Aggiornata '+z:'');l.appendChild(m);var ac=document.createElement('div');ac.className='med-session-actions';var rr=document.createElement('button');rr.type='button';rr.className='btn small gold';rr.textContent='Riprendi';rr.addEventListener('click',function(){id=r.id;data=r.data;loading=true;try{B().apply(d.state||{})}finally{loading=false}work()});var x=document.createElement('button');x.type='button';x.className='btn small delete';x.textContent='Elimina';x.addEventListener('click',function(){if(!confirm('Eliminare definitivamente questa sessione Medimago?'))return;fb.db.collection(COLL).doc(r.id).delete().then(list).catch(function(e){stat('med-session-home-msg','Impossibile eliminare: '+(e.message||e),'bad')})});ac.appendChild(rr);ac.appendChild(x);box.appendChild(l);box.appendChild(ac);h.appendChild(box)})}).catch(function(e){console.error(e);h.innerHTML='<div class="med-session-status bad">Impossibile caricare le sessioni: '+String(e.message||e)+'</div>'})}
+function fresh(){var pg=String((E('med-session-pg-name')||{}).value||'').trim(),cas=String((E('med-session-case-name')||{}).value||'').trim();if(!pg){stat('med-session-home-msg','Inserisci il nome del PG prima di creare la sessione.','bad');return}if(!fb.user||!fb.db||!B()){stat('med-session-home-msg','Firebase non è ancora pronto.','bad');return}loading=true;try{B().newBlank()}finally{loading=false}data={pgName:pg,caseName:cas};var s=B().collect(),p={ownerUid:fb.user.uid,pgName:pg,caseName:cas,phaseIndex:0,phaseLabel:'Guaritori',status:'in_corso',createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp(),toolVersion:'medimagia-v38-sessioni-medimago',state:s};stat('med-session-home-msg','Creo la nuova sessione…','saving');fb.db.collection(COLL).add(p).then(function(ref){id=ref.id;data=p;stat('med-session-home-msg','','');work()}).catch(function(e){console.error(e);stat('med-session-home-msg','Impossibile creare la sessione: '+(e.message||e),'bad')})}
+function back(){var my=id;(canSave()?save():Promise.resolve(true)).then(function(){if(my===id){id='';data=null}B().reset();home();list()}).catch(function(){})}function del(){if(!id||!fb.db)return;if(!confirm('Eliminare definitivamente questa sessione Medimago? Non potrà essere recuperata.'))return;var my=id;fb.db.collection(COLL).doc(my).delete().then(function(){if(my===id){id='';data=null}B().reset();home();list()}).catch(function(e){E('med-session-save-status').textContent='Impossibile eliminare: '+(e.message||e)})}
+function init(){home();E('med-session-new').addEventListener('click',fresh);E('med-session-back').addEventListener('click',back);E('med-session-delete-current').addEventListener('click',del);var w=E('med-session-workspace');document.addEventListener('input',function(e){if(w.contains(e.target))schedule()},true);document.addEventListener('change',function(e){if(w.contains(e.target))schedule()},true);document.addEventListener('click',function(e){if(w.contains(e.target))setTimeout(schedule,90)},true);window.addEventListener('pagehide',function(){if(canSave())save().catch(function(){})});document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&canSave())save().catch(function(){})});E('tab-paziente').addEventListener('click',function(){if(canSave())save().catch(function(){})});try{if(typeof firebase==='undefined')throw new Error('SDK Firebase non caricato');if(!firebase.apps.length)firebase.initializeApp(CFG);fb.auth=firebase.auth();fb.db=firebase.firestore();fb.auth.onAuthStateChanged(function(u){if(u){signing=false;fb.user=u;stat('med-session-auth-status','Firebase connesso · sessioni Medimago personali attive ✓','ok');list();return}if(signing)return;signing=true;fb.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function(){return fb.auth.signInAnonymously()}).catch(function(e){signing=false;console.error(e);stat('med-session-auth-status','Errore autenticazione Firebase: '+(e.message||e),'bad')})})}catch(e){console.error(e);stat('med-session-auth-status','Firebase non disponibile: '+(e.message||e),'bad')}}init();
+})();
 </script>
 
 <script id="sanmungo-autoheight" type="text/javascript">
