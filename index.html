@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Medimagia — San Mungo</title>
-<!-- v38: sessioni Firebase esclusivamente per il Reparto Medimaghi; Pazienti sempre effimero -->
+<!-- v39: dadi Diagnosi/Terapia/Chirurgia riallineati a medimagia5; sessioni Medimaghi migrate ai nuovi valori -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.3.0/css/all.min.css');
@@ -601,7 +601,7 @@ body{
 .result-box.grave,.result-box.grave b,.result-box.grave strong{color:#64232c!important;}
 .btn,button{font-weight:700;}
 </style>
-<style id="v38-med-session-css">
+<style id="v39-med-session-css">
 #view-medimago .med-session-home{margin:8px 0 20px;padding:20px 22px;border:2px solid #6d8f7c;border-left:6px solid #4f7964;border-radius:10px;background:#edf2ee;color:#25372e;box-shadow:0 7px 22px rgba(0,0,0,.18)}
 #view-medimago .med-session-home h2{margin:0 0 8px;color:#315c46}.med-session-note{margin:0 0 14px;line-height:1.5;color:#465b50}
 #view-medimago .med-session-create{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end}.med-session-create label{display:block;font-size:.78rem;font-weight:800;margin-bottom:4px;color:#315c46}.med-session-create input{width:100%;padding:8px 10px;border:1px solid #7d9b8c;border-radius:6px;background:#fff;color:#1f3027}
@@ -2257,39 +2257,38 @@ function renderEffectsSummary(g,onlyUsed){
   return '<div class="effect-box"><h5>Oggetti / Conoscenze / Incantesimi'+(onlyUsed?' effettivamente usati':' registrati')+'</h5>'+list.map(function(e){return '<div class="effect-summary">'+esc(effectLabel(e))+'</div>';}).join('')+'</div>';
 }
 
-function profiloGuaritoreDaForm(){
-const tipo = document.querySelector('input[name="g-tipo"]:checked').value;
-let sap = tipo === 'studente' ? parseInt(document.getElementById('g-sap-stud').value,10) : clampInt(document.getElementById('g-sap-adulto').value,0,25);
-if(tipo === 'studente'){ sap = sap > 0 ? 1 : 0; }
-let diagnost = parseInt(document.getElementById('g-diagnosta').value,10) || 0;
-let terap = parseInt(document.getElementById('g-terapista').value,10) || 0;
-let chirurg = parseInt(document.getElementById('g-chirurgo').value,10) || 0;
+function profiloGuaritoreDaDati(tipo,sap,diagnost,terap,chirurg){
+tipo = tipo === 'adulto' ? 'adulto' : 'studente';
+sap = tipo === 'studente' ? (Number(sap)>0?1:0) : clampInt(sap,0,25);
+diagnost = Math.max(0,parseInt(diagnost,10)||0);
+terap = Math.max(0,parseInt(terap,10)||0);
+chirurg = Math.max(0,parseInt(chirurg,10)||0);
 /* Gli Studenti possono possedere solo il livello I. Anche gli Adulti senza Sapienza
    possono acquistare la singola Conoscenza Avanzata al livello I. */
 if(tipo === 'studente' || sap <= 0){ diagnost=Math.min(diagnost,1); terap=Math.min(terap,1); chirurg=Math.min(chirurg,1); }
+else { diagnost=Math.min(diagnost,5); terap=Math.min(terap,5); chirurg=Math.min(chirurg,5); }
 
 let diagBase, terBase, chiBase = null;
 let diagLabel, terLabel, chiLabel;
 
 if(tipo === 'studente'){
-  /* Guida Medimagia: valori specifici Studenti, indipendenti da qualsiasi voto scolastico. */
   diagBase = diagnost > 0 ? 9 : 7;
   terBase = terap > 0 ? 9 : 7;
   chiBase = chirurg > 0 ? 7 : null;
-
   diagLabel = diagnost > 0 ? 'Studente con Diagnosta I' : 'Studente senza Diagnosta';
   terLabel = terap > 0 ? 'Studente con Terapista I' : 'Studente senza Terapista';
   chiLabel = chirurg > 0 ? 'Studente con Chirurgo I' : 'Studente senza Chirurgo';
 } else {
+  /* Diagnosi/Terapia: Adulto senza Conoscenza = 11; livelli I-V = 12-16. */
   diagBase = diagnost > 0 ? 11 + diagnost : 11;
   terBase = terap > 0 ? 11 + terap : 11;
-
   diagLabel = diagnost > 0 ? 'Diagnosta '+ROMANI[diagnost-1] : 'Adulto senza Diagnosta';
   terLabel = terap > 0 ? 'Terapista '+ROMANI[terap-1] : 'Adulto senza Terapista';
 
+  /* Chirurgia: Sapienza 1-5/6-10/11-15/16-20/21-25 => 4/5/6/7/8.
+     Se è presente Chirurgo I-V => 7-11; si usa sempre il valore più favorevole. */
   const chiDaSapienza = sap > 0 ? (sap<=5 ? 4 : (sap<=10 ? 5 : (sap<=15 ? 6 : (sap<=20 ? 7 : 8)))) : null;
   const chiDaLivello = chirurg > 0 ? 6 + chirurg : null;
-
   if(chiDaSapienza !== null || chiDaLivello !== null){
     chiBase = Math.max(chiDaSapienza === null ? -Infinity : chiDaSapienza, chiDaLivello === null ? -Infinity : chiDaLivello);
     if(chirurg > 0 && sap > 0){
@@ -2303,9 +2302,28 @@ if(tipo === 'studente'){
     chiLabel = 'Nessuna Sapienza Medimagica né Chirurgo';
   }
 }
-
 return {tipo:tipo,sapienza:sap,diagnosta:diagnost,terapista:terap,chirurgo:chirurg,
 diagBase:diagBase,diagLabel:diagLabel,terBase:terBase,terLabel:terLabel,chiBase:chiBase,chiLabel:chiLabel};
+}
+
+function profiloGuaritoreDaForm(){
+const tipo = document.querySelector('input[name="g-tipo"]:checked').value;
+const sap = tipo === 'studente' ? parseInt(document.getElementById('g-sap-stud').value,10) : clampInt(document.getElementById('g-sap-adulto').value,0,25);
+const diagnost = parseInt(document.getElementById('g-diagnosta').value,10) || 0;
+const terap = parseInt(document.getElementById('g-terapista').value,10) || 0;
+const chirurg = parseInt(document.getElementById('g-chirurgo').value,10) || 0;
+return profiloGuaritoreDaDati(tipo,sap,diagnost,terap,chirurg);
+}
+
+function riallineaGuaritoreRegoleDadi(g){
+if(!g){return g;}
+const pr=profiloGuaritoreDaDati(g.tipo,g.sapienza,g.diagnosta,g.terapista,g.chirurgo);
+g.tipo=pr.tipo;g.sapienza=pr.sapienza;g.diagnosta=pr.diagnosta;g.terapista=pr.terapista;g.chirurgo=pr.chirurgo;
+g.diagBase=pr.diagBase;g.diagLabel=pr.diagLabel;g.terBase=pr.terBase;g.terLabel=pr.terLabel;g.chiBase=pr.chiBase;g.chiLabel=pr.chiLabel;
+/* Regolamento aggiornato: a Sapienza Medimagica 25 la Fatica base delle tre fasi è 0,
+   indipendentemente dal possesso della corrispondente Conoscenza Avanzata. */
+g.sap25diag=pr.sapienza>=25;g.sap25ter=pr.sapienza>=25;g.sap25chi=pr.sapienza>=25;
+return g;
 }
 
 function aggiornaFormProfiloGuaritore(){
@@ -2327,7 +2345,7 @@ document.getElementById('g-profile-preview').innerHTML =
 '<b>Tecnica:</b> '+techBase+(genBonus?' + '+genBonus+' = <b>'+ (techBase+genBonus) +'</b> effettiva':'')+'<br>'+
 '<b>Diagnosi:</b> base '+pr.diagBase+' ('+esc(pr.diagLabel)+') &nbsp; • &nbsp; '+
 '<b>Terapia:</b> base '+pr.terBase+' ('+esc(pr.terLabel)+')<br>'+chiTxt+
-(pr.sapienza>=25 ? '<br><span class="success">Sapienza Medimagica 25: Fatica base 0 soltanto nelle fasi per cui il PG possiede la corrispondente Conoscenza Avanzata.</span>' : '');
+(pr.sapienza>=25 ? '<br><span class="success">Sapienza Medimagica 25: Fatica base 0 in Diagnosi, Terapia e Chirurgia.</span>' : '');
 }
 
 function renderStepGuaritori(){
@@ -2345,7 +2363,7 @@ body.innerHTML =
 '<div class="field"><label>Chirurgo</label><select id="g-chirurgo">'+opzioniLivelli(1)+'</select></div></div>'+
 '<p class="muted"><b>Studenti:</b> senza Diagnosta/Terapista usano base 7; con Diagnosta I o Terapista I usano base 9; la Chirurgia è possibile solo con Chirurgo I e usa base 7. <b>Adulti:</b> senza Sapienza possono acquistare il livello I; con Sapienza e Chirurgo, in Chirurgia si applica sempre il valore più favorevole. Gli Studenti non possono superare Sapienza I.</p>'+
 '<div class="prep-preview" id="g-profile-preview"></div>'+
-'<p class="muted" style="margin:10px 0 0"><b>Nota:</b> il voto nella singola Pozione prodotta serve soltanto quando si applicano gli effetti dell’incidente “Esplosione di un Calderone”; non modifica Diagnosi, Terapia o Chirurgia.</p></div>'+
+'<p class="muted" style="margin:10px 0 0"><b>Pozioni degli Studenti:</b> non si usa alcun voto o media in Pozioni. In Medimagia conta soltanto la <b>Forza effettiva della dose utilizzata</b> (Standard, Oltre Ogni Previsione o Eccezionale). L’eventuale Sapienza Pozionistica I dello Studente interviene nella creazione della Pozione e deve essere già riflessa nella sua Forza finale.</p></div>'+
 '<div class="prep-block"><div class="prep-title">Oggetti / Conoscenze / Incantesimi del Guaritore</div>'+
 '<p class="muted">Scegli direttamente gli effetti regolamentati da Prezzario ed Enciclopedia. Il tool precompila valore, Fatica, usi e fase possibile. Le <b>Conoscenze Medimagiche</b> restano cumulabili fino a +5 nella singola fase; bonus generici come Amuleto della Fortuna, Manuali dell’Ars e Ragno Indagatore sono conteggiati separatamente secondo la propria regola.</p>'+
 '<div class="med-preset-picker"><div class="field"><label>Scegli dal regolamento</label><select id="g-effect-preset"></select></div><button type="button" class="btn small gold" id="g-effect-preset-add">+ Inserisci</button></div>'+
@@ -2385,7 +2403,7 @@ medimagoState.guaritori.push({
 id:'g'+guaritoreCounter, nome:nomeVal||('Guaritore '+guaritoreCounter), tecnica:clampInt(document.getElementById('g-tecnica').value,0,Number.MAX_SAFE_INTEGER),
 tipo:pr.tipo,sapienza:pr.sapienza,diagnosta:pr.diagnosta,terapista:pr.terapista,chirurgo:pr.chirurgo,
 diagBase:pr.diagBase,diagLabel:pr.diagLabel,terBase:pr.terBase,terLabel:pr.terLabel,chiBase:pr.chiBase,chiLabel:pr.chiLabel,
-sap25diag:pr.sapienza>=25 && pr.diagnosta>0,sap25ter:pr.sapienza>=25 && pr.terapista>0,sap25chi:pr.sapienza>=25 && pr.chirurgo>0,
+sap25diag:pr.sapienza>=25,sap25ter:pr.sapienza>=25,sap25chi:pr.sapienza>=25,
 fatica:-storicoFatica,esiti:[],diagCharges:{},effects:effects});
 document.getElementById('g-nome').value=''; effectsHost.innerHTML=''; renderListaGuaritori(); aggiornaFormProfiloGuaritore();
 });
@@ -2484,7 +2502,7 @@ if(!medimagoState.guaritori.length){ body.innerHTML='<p class="muted">Torna al p
 let checks='';
 CLASSI.forEach(function(c){ checks += '<label class="pill" style="margin-right:8px;margin-bottom:8px;display:inline-flex"><input type="checkbox" class="diag-classe" value="'+c+'" style="margin-right:6px"'+(medimagoState.classiDiagnosi.has(c)?' checked':'')+'> '+c+'</label>'; });
 body.innerHTML =
-'<div class="phase-summary"><b>Diagnosi:</b> -2 Fatica per azione • da 1 a 5d40 • Conoscenze Medimagiche max +5</div>'+
+'<div class="phase-summary"><b>Diagnosi:</b> da 1 a 5d40 • -2 Fatica per azione (0 con Sapienza 25) • auto-diagnosi -20% • autoconclusiva da 40 • Conoscenze Medimagiche max +5</div>'+
 '<details class="rule-details"><summary>Regole, bonus e causa della malattia</summary><div class="rule-details-body">Una singola azione può comprendere un d40 per ciascuna Classificazione presente; nello stesso blocco la Fatica base si paga una sola volta. Un nuovo tentativo dopo un errore è una nuova azione.<br><br><b>Oggetti/Conoscenze:</b> i bonus generali alla Tecnica sono inclusi automaticamente. I bonus specifici si scelgono per la singola Classificazione; parametro prima, possibilità dopo, con massimo <b>+5 complessivi</b>. Usi e Fatica vengono consumati una sola volta per la stessa azione.<br><br><b>Causa/malattia:</b> se ancora sconosciuta, diventa nota individuando almeno il <b>60% dei Sintomi totali</b>. Questa percentuale non viene calcolata automaticamente perché il tool registra solo i Sintomi riconosciuti.</div></details>'+
 '<div style="margin:0 0 10px">'+checks+'</div>'+
 '<label><input type="checkbox" id="diag-nota"'+(medimagoState.causaNota?' checked':'')+'> Il PG malato o altri PG conoscono cosa è accaduto (+3 a ogni dado)</label>'+
@@ -2639,7 +2657,7 @@ if(!medimagoState.guaritori.length){body.innerHTML='<p class="muted">Aggiungi pr
 const individuati=Array.from(medimagoState.sintomiIndividuati).filter(function(id){return SINTOMI_BY_ID[id];}); const opzioniSintomi=SINTOMI.map(function(ss){return '<option value="'+ss.id+'">'+ss.c+' — '+esc(ss.n)+'</option>';}).join('');
 let bulkHtml=''; if(individuati.length){bulkHtml='<div class="panel" style="background:#fff"><h4>Sintomi riconosciuti nella Diagnosi</h4><p class="muted">'+individuati.map(function(id){const x=SINTOMI_BY_ID[id];return x.c+' '+esc(x.n);}).join(' • ')+'</p><p class="note">Configura ogni Sintomo singolarmente: Guaritore, Pozione, Oggetti/Conoscenze e auto-cura possono cambiare da un trattamento all’altro.</p></div>';}
 body.innerHTML=bulkHtml+
-'<div class="phase-summary"><b>Terapia / Chirurgia:</b> fino a 3 Sintomi per post • tutti i Componenti richiesti • bonus specifici max +5</div>'+
+'<div class="phase-summary"><b>Terapia:</b> 1d40, -0,5 Fatica/Sintomo, auto-cura -30%, autoconclusiva da 40 &nbsp; • &nbsp; <b>Chirurgia:</b> 1d35, -1 Fatica/Sintomo, auto-cura -40%, autoconclusiva da 35 &nbsp; • &nbsp; Sapienza 25: Fatica base 0</div>'+
 '<details class="rule-details"><summary>Regole complete del trattamento</summary><div class="rule-details-body">Devono essere disponibili tutte le Componenti del Rimedio; se è prevista un’alternativa esplicita, ne basta una. L’Acqua Distillata è sempre ottenibile autoconclusivamente. Tutti i passaggi di un singolo Sintomo possono essere eseguiti nello stesso post.<br><br>Se i passaggi richiedono Incantesimi o Tecniche, non serve un ulteriore tiro e non va aggiunta la loro normale Fatica: sono già compresi nel tiro e nella Fatica di Terapia/Chirurgia.<br><br>I bonus generali alla Tecnica sono automatici; gli Oggetti/Conoscenze specifici si scelgono qui. Il massimo di <b>+5</b> riguarda le Conoscenze Medimagiche della fase; gli Oggetti generici restano separati. Parametro prima, possibilità dopo.</div></details>'+
 '<h4 style="margin-top:20px">Sintomi già aggiunti</h4><div id="cura-coda"></div>'+
 '<button type="button" class="btn ghost" id="cura-toggle-form" style="margin-top:20px">+ Aggiungi Sintomo già noto/comunicato dal Narratore o riconosciuto</button>'+
@@ -2647,7 +2665,7 @@ body.innerHTML=bulkHtml+
 '<div class="field"><label>Sintomo</label><select id="cura-sel">'+opzioniSintomi+'</select></div>'+guaritoreChooserSingle('cura-guaritore')+
 '<div id="cura-rimedio" class="prep-preview" style="margin-bottom:12px"></div>'+
 '<label><input type="checkbox" id="cura-componenti"> Confermo che il Guaritore possiede tutte le Componenti del Rimedio ONGame necessarie (una sola delle alternative esplicitamente previste)</label>'+
-'<div class="grid2" style="margin-top:12px"><div class="field"><label><input type="checkbox" id="cura-usa-pozione"> Il ramo di Rimedio scelto usa effettivamente una Pozione</label><select id="cura-pozione" disabled><option value="no">Pozione standard / nessun bonus</option><option value="oop">Oltre Ogni Previsione (+1)</option><option value="ecc">Eccezionale (+2)</option></select></div>'+
+'<div class="grid2" style="margin-top:12px"><div class="field"><label><input type="checkbox" id="cura-usa-pozione"> Il ramo di Rimedio scelto usa effettivamente una Pozione</label><select id="cura-pozione" disabled><option value="no">Forza Standard / nessun bonus</option><option value="oop">Forza Oltre Ogni Previsione (+1)</option><option value="ecc">Forza Eccezionale (+2)</option></select><span class="spiega-inline">Seleziona la Forza della dose usata, non un voto scolastico del PG.</span></div>'+
 '<label style="align-self:center"><input type="checkbox" id="cura-selfcure"> Il Guaritore cura se stesso</label></div>'+
 '<div class="effect-box" id="cura-effects"></div><div id="cura-effect-warn" class="step-warning"></div>'+
 '<div id="cura-anteprima" style="margin:12px 0"></div><div id="cura-form-warn" class="step-warning"></div><button type="button" class="btn gold" id="cura-add">Aggiungi Sintomo da curare</button></div>';
@@ -2795,7 +2813,7 @@ AVVIO
 window.__medSessionBridge={
  collect:function(){function mapSets(o){var x={};Object.keys(o||{}).forEach(function(k){x[k]=Array.from(o[k]||[])});return x}return {guaritori:JSON.parse(JSON.stringify(medimagoState.guaritori||[])),coda:JSON.parse(JSON.stringify(medimagoState.coda||[])),causaNota:!!medimagoState.causaNota,classiDiagnosi:Array.from(medimagoState.classiDiagnosi||[]),classiRiconosciute:mapSets(medimagoState.classiRiconosciute||{}),sintomiIndividuati:Array.from(medimagoState.sintomiIndividuati||[]),sintomiProvenienza:mapSets(medimagoState.sintomiProvenienza||{}),diagActionCounter:Number(medimagoState.diagActionCounter)||0,guaritoreCounter:Number(guaritoreCounter)||0,medEffectCounter:Number(medEffectCounter)||0,currentStep:mdStepper&&mdStepper.getCurrent?mdStepper.getCurrent():0};},
  reset:function(){medimagoState.guaritori=[];medimagoState.coda=[];medimagoState.causaNota=false;medimagoState.classiDiagnosi=new Set();medimagoState.classiRiconosciute={};medimagoState.sintomiIndividuati=new Set();medimagoState.sintomiProvenienza={};medimagoState.diagActionCounter=0;medimagoState.refreshCuraEffects=null;medimagoState.refreshListaDiagnosi=null;guaritoreCounter=0;medEffectCounter=0;mdStepper=null;var w=document.getElementById('med-session-wizard');if(w)w.innerHTML='';},
- apply:function(s){function mapToSets(o){var x={};Object.keys(o||{}).forEach(function(k){x[k]=new Set(Array.isArray(o[k])?o[k]:[])});return x}this.reset();s=s||{};medimagoState.guaritori=Array.isArray(s.guaritori)?JSON.parse(JSON.stringify(s.guaritori)):[];medimagoState.coda=Array.isArray(s.coda)?JSON.parse(JSON.stringify(s.coda)):[];medimagoState.causaNota=!!s.causaNota;medimagoState.classiDiagnosi=new Set(Array.isArray(s.classiDiagnosi)?s.classiDiagnosi:[]);medimagoState.classiRiconosciute=mapToSets(s.classiRiconosciute||{});medimagoState.sintomiIndividuati=new Set(Array.isArray(s.sintomiIndividuati)?s.sintomiIndividuati:[]);medimagoState.sintomiProvenienza=mapToSets(s.sintomiProvenienza||{});medimagoState.diagActionCounter=Math.max(0,Number(s.diagActionCounter)||0);guaritoreCounter=Math.max(0,Number(s.guaritoreCounter)||0);medEffectCounter=Math.max(0,Number(s.medEffectCounter)||0);buildMedimagoWizard(Math.max(0,Number(s.currentStep)||0));},
+ apply:function(s){function mapToSets(o){var x={};Object.keys(o||{}).forEach(function(k){x[k]=new Set(Array.isArray(o[k])?o[k]:[])});return x}this.reset();s=s||{};medimagoState.guaritori=Array.isArray(s.guaritori)?JSON.parse(JSON.stringify(s.guaritori)):[];medimagoState.guaritori.forEach(riallineaGuaritoreRegoleDadi);medimagoState.coda=Array.isArray(s.coda)?JSON.parse(JSON.stringify(s.coda)):[];medimagoState.causaNota=!!s.causaNota;medimagoState.classiDiagnosi=new Set(Array.isArray(s.classiDiagnosi)?s.classiDiagnosi:[]);medimagoState.classiRiconosciute=mapToSets(s.classiRiconosciute||{});medimagoState.sintomiIndividuati=new Set(Array.isArray(s.sintomiIndividuati)?s.sintomiIndividuati:[]);medimagoState.sintomiProvenienza=mapToSets(s.sintomiProvenienza||{});medimagoState.diagActionCounter=Math.max(0,Number(s.diagActionCounter)||0);guaritoreCounter=Math.max(0,Number(s.guaritoreCounter)||0);medEffectCounter=Math.max(0,Number(s.medEffectCounter)||0);buildMedimagoWizard(Math.max(0,Number(s.currentStep)||0));},
  newBlank:function(){this.reset();buildMedimagoWizard(0);},
  phaseLabel:function(i){return ['Guaritori','Diagnosi','Terapia e Chirurgia','Riepilogo'][Math.max(0,Math.min(3,Number(i)||0))]}
 };
@@ -2805,15 +2823,15 @@ buildPazienteWizard();
 </script>
 
 
-<script id="med-session-manager-v38">
+<script id="med-session-manager-v39">
 (function(){'use strict';
 var CFG={apiKey:'AIzaSyCvd56bSEL02s2OY2PSk7uyFX-CYRB4Vz0',authDomain:'conteggi-eee1b.firebaseapp.com',projectId:'conteggi-eee1b',storageBucket:'conteggi-eee1b.firebasestorage.app',messagingSenderId:'481320219586',appId:'1:481320219586:web:87e974d618a302adfadc5b'},COLL='sessioni_medimagia',fb={auth:null,db:null,user:null},id='',data=null,loading=false,signing=false,timer=null,chain=Promise.resolve();
 function E(x){return document.getElementById(x)}function B(){return window.__medSessionBridge}function stat(x,m,k){var e=E(x);if(!e)return;e.textContent=m||'';if(x==='med-session-auth-status')e.className='med-session-status'+(k?' '+k:'')}function fmt(v){try{var d=v&&v.toDate?v.toDate():(v&&v.seconds?new Date(v.seconds*1000):null);return d?d.toLocaleString('it-IT'):''}catch(e){return ''}}
 function home(){E('med-session-home').classList.remove('hidden');E('med-session-workspace').classList.add('hidden')}function work(){E('med-session-home').classList.add('hidden');E('med-session-workspace').classList.remove('hidden');E('med-session-save-status').textContent='Sessione caricata · autosalvataggio Firebase attivo ✓';try{window.scrollTo(0,0)}catch(e){}}
-function canSave(){return !loading&&id&&fb.db&&fb.user&&B()}function pay(){var s=B().collect();return {ownerUid:fb.user.uid,pgName:String((data&&data.pgName)||'PG').trim()||'PG',caseName:String((data&&data.caseName)||'').trim(),phaseIndex:s.currentStep,phaseLabel:B().phaseLabel(s.currentStep),status:s.currentStep===3?'riepilogo':'in_corso',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),toolVersion:'medimagia-v38-sessioni-medimago',state:s}}
+function canSave(){return !loading&&id&&fb.db&&fb.user&&B()}function pay(){var s=B().collect();return {ownerUid:fb.user.uid,pgName:String((data&&data.pgName)||'PG').trim()||'PG',caseName:String((data&&data.caseName)||'').trim(),phaseIndex:s.currentStep,phaseLabel:B().phaseLabel(s.currentStep),status:s.currentStep===3?'riepilogo':'in_corso',updatedAt:firebase.firestore.FieldValue.serverTimestamp(),toolVersion:'medimagia-v39-dadi-medimago',state:s}}
 function save(){if(timer){clearTimeout(timer);timer=null}if(!canSave())return Promise.resolve(true);var my=id,p=pay(),st=E('med-session-save-status');if(st)st.textContent='Salvataggio automatico…';var t=chain.catch(function(){}).then(function(){return fb.db.collection(COLL).doc(my).set(p,{merge:true})}).then(function(){if(my===id){data=Object.assign({},data||{},p);if(st)st.textContent='Salvata automaticamente su Firebase ✓'}return true}).catch(function(e){console.error(e);if(my===id&&st)st.textContent='Errore salvataggio Firebase: '+(e.message||e);throw e});chain=t.catch(function(){});return t}function schedule(){if(!canSave())return;if(timer)clearTimeout(timer);timer=setTimeout(function(){timer=null;save().catch(function(){})},750)}
 function list(){var h=E('med-session-list');if(!h||!fb.db||!fb.user)return;h.innerHTML='<div class="med-session-status">Caricamento sessioni…</div>';fb.db.collection(COLL).where('ownerUid','==',fb.user.uid).get().then(function(s){var a=[];s.forEach(function(d){a.push({id:d.id,data:d.data()||{}})});a.sort(function(x,y){return ((y.data.updatedAt&&y.data.updatedAt.seconds)||0)-((x.data.updatedAt&&x.data.updatedAt.seconds)||0)});h.innerHTML='';if(!a.length){h.innerHTML='<div class="med-session-status">Nessuna sessione Medimago salvata.</div>';return}a.forEach(function(r){var d=r.data,box=document.createElement('div');box.className='med-session-item';var l=document.createElement('div'),t=document.createElement('div');t.className='med-session-title';t.textContent=(d.pgName||'PG')+(d.caseName?' — '+d.caseName:'');l.appendChild(t);var m=document.createElement('div');m.className='med-session-meta';var z=fmt(d.updatedAt);m.textContent='Fase: '+(d.phaseLabel||B().phaseLabel(d.phaseIndex))+(z?' · Aggiornata '+z:'');l.appendChild(m);var ac=document.createElement('div');ac.className='med-session-actions';var rr=document.createElement('button');rr.type='button';rr.className='btn small gold';rr.textContent='Riprendi';rr.addEventListener('click',function(){id=r.id;data=r.data;loading=true;try{B().apply(d.state||{})}finally{loading=false}work()});var x=document.createElement('button');x.type='button';x.className='btn small delete';x.textContent='Elimina';x.addEventListener('click',function(){if(!confirm('Eliminare definitivamente questa sessione Medimago?'))return;fb.db.collection(COLL).doc(r.id).delete().then(list).catch(function(e){stat('med-session-home-msg','Impossibile eliminare: '+(e.message||e),'bad')})});ac.appendChild(rr);ac.appendChild(x);box.appendChild(l);box.appendChild(ac);h.appendChild(box)})}).catch(function(e){console.error(e);h.innerHTML='<div class="med-session-status bad">Impossibile caricare le sessioni: '+String(e.message||e)+'</div>'})}
-function fresh(){var pg=String((E('med-session-pg-name')||{}).value||'').trim(),cas=String((E('med-session-case-name')||{}).value||'').trim();if(!pg){stat('med-session-home-msg','Inserisci il nome del PG prima di creare la sessione.','bad');return}if(!fb.user||!fb.db||!B()){stat('med-session-home-msg','Firebase non è ancora pronto.','bad');return}loading=true;try{B().newBlank()}finally{loading=false}data={pgName:pg,caseName:cas};var s=B().collect(),p={ownerUid:fb.user.uid,pgName:pg,caseName:cas,phaseIndex:0,phaseLabel:'Guaritori',status:'in_corso',createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp(),toolVersion:'medimagia-v38-sessioni-medimago',state:s};stat('med-session-home-msg','Creo la nuova sessione…','saving');fb.db.collection(COLL).add(p).then(function(ref){id=ref.id;data=p;stat('med-session-home-msg','','');work()}).catch(function(e){console.error(e);stat('med-session-home-msg','Impossibile creare la sessione: '+(e.message||e),'bad')})}
+function fresh(){var pg=String((E('med-session-pg-name')||{}).value||'').trim(),cas=String((E('med-session-case-name')||{}).value||'').trim();if(!pg){stat('med-session-home-msg','Inserisci il nome del PG prima di creare la sessione.','bad');return}if(!fb.user||!fb.db||!B()){stat('med-session-home-msg','Firebase non è ancora pronto.','bad');return}loading=true;try{B().newBlank()}finally{loading=false}data={pgName:pg,caseName:cas};var s=B().collect(),p={ownerUid:fb.user.uid,pgName:pg,caseName:cas,phaseIndex:0,phaseLabel:'Guaritori',status:'in_corso',createdAt:firebase.firestore.FieldValue.serverTimestamp(),updatedAt:firebase.firestore.FieldValue.serverTimestamp(),toolVersion:'medimagia-v39-dadi-medimago',state:s};stat('med-session-home-msg','Creo la nuova sessione…','saving');fb.db.collection(COLL).add(p).then(function(ref){id=ref.id;data=p;stat('med-session-home-msg','','');work()}).catch(function(e){console.error(e);stat('med-session-home-msg','Impossibile creare la sessione: '+(e.message||e),'bad')})}
 function back(){var my=id;(canSave()?save():Promise.resolve(true)).then(function(){if(my===id){id='';data=null}B().reset();home();list()}).catch(function(){})}function del(){if(!id||!fb.db)return;if(!confirm('Eliminare definitivamente questa sessione Medimago? Non potrà essere recuperata.'))return;var my=id;fb.db.collection(COLL).doc(my).delete().then(function(){if(my===id){id='';data=null}B().reset();home();list()}).catch(function(e){E('med-session-save-status').textContent='Impossibile eliminare: '+(e.message||e)})}
 function init(){home();E('med-session-new').addEventListener('click',fresh);E('med-session-back').addEventListener('click',back);E('med-session-delete-current').addEventListener('click',del);var w=E('med-session-workspace');document.addEventListener('input',function(e){if(w.contains(e.target))schedule()},true);document.addEventListener('change',function(e){if(w.contains(e.target))schedule()},true);document.addEventListener('click',function(e){if(w.contains(e.target))setTimeout(schedule,90)},true);window.addEventListener('pagehide',function(){if(canSave())save().catch(function(){})});document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'&&canSave())save().catch(function(){})});E('tab-paziente').addEventListener('click',function(){if(canSave())save().catch(function(){})});try{if(typeof firebase==='undefined')throw new Error('SDK Firebase non caricato');if(!firebase.apps.length)firebase.initializeApp(CFG);fb.auth=firebase.auth();fb.db=firebase.firestore();fb.auth.onAuthStateChanged(function(u){if(u){signing=false;fb.user=u;stat('med-session-auth-status','Firebase connesso · sessioni Medimago personali attive ✓','ok');list();return}if(signing)return;signing=true;fb.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(function(){return fb.auth.signInAnonymously()}).catch(function(e){signing=false;console.error(e);stat('med-session-auth-status','Errore autenticazione Firebase: '+(e.message||e),'bad')})})}catch(e){console.error(e);stat('med-session-auth-status','Firebase non disponibile: '+(e.message||e),'bad')}}init();
 })();
