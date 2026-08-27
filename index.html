@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Medimagia — San Mungo</title>
+<!-- v41: import clinico ffmed consumato anche dall'URL; il refresh del Reparto Pazienti torna davvero vuoto -->
 <!-- v40: import clinico allineato al tool Riuscita/Incantesimi/Piante/Creature/Pozioni — Salute, Sintomi e bersaglio -->
 <!-- v39: dadi Diagnosi/Terapia/Chirurgia riallineati a medimagia5; sessioni Medimaghi migrate ai nuovi valori -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1355,8 +1356,24 @@ function applyClinicalImportPayload(payload){
 function consumeClinicalImport(){
   /* L'hash è il fallback per l'apertura diretta; nell'iframe ForumFree il canale
      principale è la coda localStorage condivisa fra i tool GitHub. */
-  const payload=clinicalPayloadFromHash() || clinicalPayloadFromQueue();
-  return payload ? applyClinicalImportPayload(payload) : false;
+  const fromHash=clinicalPayloadFromHash();
+  const payload=fromHash || clinicalPayloadFromQueue();
+  const applied=payload ? applyClinicalImportPayload(payload) : false;
+
+  /* v41: il Reparto Pazienti è effimero. Se l'import è arrivato dal fallback
+     #ffmed, consumiamo anche il frammento dall'URL: al refresh la stessa cartella
+     non deve essere importata una seconda volta. La coda locale è già consumata
+     da clinicalPayloadFromQueue()/applyClinicalImportPayload(). */
+  if(applied && fromHash){
+    try{
+      if(window.history && typeof window.history.replaceState==='function'){
+        window.history.replaceState(null,document.title,window.location.pathname+window.location.search);
+      }else{
+        window.location.hash='';
+      }
+    }catch(e){}
+  }
+  return applied;
 }
 function clinicalImportNoticeHtml(){
   const d=pazienteState.importInfo;
