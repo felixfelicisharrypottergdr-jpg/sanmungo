@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Medimagia — San Mungo</title>
+<!-- v40: import clinico allineato al tool Riuscita/Incantesimi/Piante/Creature/Pozioni — Salute, Sintomi e bersaglio -->
 <!-- v39: dadi Diagnosi/Terapia/Chirurgia riallineati a medimagia5; sessioni Medimaghi migrate ai nuovi valori -->
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
@@ -596,6 +597,42 @@ footer{margin-top:24px;padding-top:12px;border-top:1px solid #b7cfba}
 .med-knowledge-tool a:hover{text-decoration:underline;}
 .med-knowledge-tool span{display:block;margin-top:3px;color:var(--sage);font-size:12px;}
 @media(max-width:640px){.med-compact-controls{grid-template-columns:1fr;}}
+
+
+/* ===== v40 — Import clinico dal tool Riuscita / Incantesimi / Materiali ===== */
+.clinical-import-note{
+  margin:0 0 14px;
+  padding:13px 15px;
+  border:1px solid #9fbda5;
+  border-left:5px solid #943943;
+  border-radius:10px;
+  background:linear-gradient(90deg,#e1eee3,#f7fbf7);
+  color:#315c46;
+  box-shadow:0 4px 12px rgba(36,71,55,.06);
+}
+.clinical-import-note strong{color:#7f2d36}
+.clinical-import-title{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:7px;
+  color:#7f2d36;
+  font-family:'magic','Palatino Linotype','Book Antiqua',Georgia,serif;
+  font-size:18px;
+}
+.clinical-import-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 14px;
+  font-size:13px;
+  line-height:1.45;
+}
+.clinical-import-grid span{display:inline-block}
+.clinical-import-warning{
+  margin-top:7px;
+  font-size:12px;
+  color:#7a2e2e;
+}
 
 </style>
 
@@ -1211,8 +1248,136 @@ complicazioni: {}, // id Sintomo -> {esito, classe, testo} — sempre inserite d
 componentiAuto: [], // {nome, tipo, prezzo, qta} — promemoria delle Componenti mancanti per l'Automedicazione
 componentiConfermate: false,
 saluteZero: false,
-agoniaStabilizzata: false
+agoniaStabilizzata: false,
+importInfo: null // v40: metadati OFFGame ricevuti dal tool Riuscita/Incantesimi/Materiali
 };
+
+
+const CLINICAL_IMPORT_PREFIX = 'ffgdr_clinical_import_v2_';
+const CLINICAL_IMPORT_MAX_AGE = 30 * 60 * 1000;
+
+function clinicalNormName(v){
+  let s=String(v||'').trim().toLowerCase();
+  try{s=s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');}catch(e){}
+  return s.replace(/\s+/g,' ');
+}
+function clinicalPctText(v){
+  const n=Number(v);
+  if(!Number.isFinite(n)){return '—';}
+  const r=Math.round(n*100)/100;
+  return String(r).replace('.',',')+'%';
+}
+function clinicalValidPayload(p){
+  return !!(p && Number(p.v)===1 && Array.isArray(p.symptoms));
+}
+function clinicalPayloadFromHash(){
+  try{
+    const h=String(window.location.hash||'');
+    const m=h.match(/(?:^#|[&#])ffmed=([^&]+)/);
+    if(!m)return null;
+    const p=JSON.parse(decodeURIComponent(m[1]));
+    return clinicalValidPayload(p)?p:null;
+  }catch(e){return null;}
+}
+function clinicalPayloadFromQueue(){
+  const now=Date.now(), rows=[];
+  try{
+    for(let i=window.localStorage.length-1;i>=0;i--){
+      const key=window.localStorage.key(i)||'';
+      if(key.indexOf(CLINICAL_IMPORT_PREFIX)!==0)continue;
+      let box=null;
+      try{box=JSON.parse(window.localStorage.getItem(key)||'');}catch(e){box=null;}
+      const created=box?Number(box.createdAt||0):0;
+      if(!box || !clinicalValidPayload(box.payload) || !created || now-created>CLINICAL_IMPORT_MAX_AGE){
+        window.localStorage.removeItem(key);
+        continue;
+      }
+      rows.push({key:key,createdAt:created,payload:box.payload});
+    }
+  }catch(e){return null;}
+  if(!rows.length)return null;
+  rows.sort(function(a,b){return b.createdAt-a.createdAt;});
+  const chosen=rows[0];
+  /* La coda viene consumata subito: due aperture consecutive del San Mungo
+     devono ricevere due cartelle cliniche diverse, non duplicare la stessa. */
+  try{window.localStorage.removeItem(chosen.key);}catch(e){}
+  return chosen.payload;
+}
+function applyClinicalImportPayload(payload){
+  if(!clinicalValidPayload(payload))return false;
+  const byName={};
+  SINTOMI.forEach(function(s){byName[clinicalNormName(s.n)]=s;});
+  const ids=[], missing=[], mismatch=[];
+  payload.symptoms.forEach(function(raw){
+    const name=String((raw&&raw.n)||'').trim();
+    const cls=String((raw&&raw.c)||'').trim();
+    if(!name || !/^X{1,5}$/.test(cls))return;
+    const found=byName[clinicalNormName(name)];
+    if(!found){missing.push(name+' ('+cls+')');return;}
+    if(found.c!==cls){mismatch.push(name+' ('+cls+' → '+found.c+')');return;}
+    if(ids.indexOf(found.id)<0)ids.push(found.id);
+  });
+
+  const lost=Math.max(0,Math.round(Number(payload.healthLost)||0));
+  const total=Math.max(0,Math.round(Number(payload.healthTotal)||0));
+  const pct=Number.isFinite(Number(payload.healthPct))
+    ? Math.max(0,Number(payload.healthPct))
+    : (total>0 ? Math.min(100,lost/total*100) : 0);
+
+  pazienteState.scelti=new Set(ids);
+  pazienteState.saluteZero=total>0 && lost>=total;
+  pazienteState.metodo=null;
+  pazienteState.complicazioni={};
+  pazienteState.componentiConfermate=false;
+  pazienteState.componentiAuto=[];
+  pazienteState.agoniaStabilizzata=false;
+  pazienteState.importInfo={
+    source:String(payload.source||''),
+    type:String(payload.type||''),
+    cause:String(payload.cause||''),
+    targetName:String(payload.targetName||''),
+    healthLost:lost,
+    healthTotal:total,
+    healthPct:pct,
+    importedCount:ids.length,
+    missing:missing,
+    mismatch:mismatch
+  };
+
+  /* Se il pacchetto arrivava anche tramite la coda locale, elimina l'eventuale
+     gemello identificato dallo stesso importId per evitare un secondo import al refresh. */
+  const importId=String(payload.importId||'').replace(/[^a-zA-Z0-9_-]/g,'');
+  if(importId){
+    try{window.localStorage.removeItem(CLINICAL_IMPORT_PREFIX+importId);}catch(e){}
+  }
+  return true;
+}
+function consumeClinicalImport(){
+  /* L'hash è il fallback per l'apertura diretta; nell'iframe ForumFree il canale
+     principale è la coda localStorage condivisa fra i tool GitHub. */
+  const payload=clinicalPayloadFromHash() || clinicalPayloadFromQueue();
+  return payload ? applyClinicalImportPayload(payload) : false;
+}
+function clinicalImportNoticeHtml(){
+  const d=pazienteState.importInfo;
+  if(!d)return '';
+  const who=d.targetName ? d.targetName : 'Bersaglio';
+  const cause=d.cause ? '<span><strong>Causa:</strong> '+esc(d.cause)+'</span>' : '';
+  const hp=d.healthTotal>0
+    ? '<span><strong>Salute:</strong> -'+esc(String(d.healthLost))+' / '+esc(String(d.healthTotal))+' ('+esc(clinicalPctText(d.healthPct))+')</span>'
+    : '<span><strong>Salute:</strong> dato totale non disponibile</span>';
+  const typ=d.type ? '<span><strong>Origine:</strong> '+esc(d.type)+'</span>' : '';
+  let warn='';
+  if(d.missing.length){warn+='<div class="clinical-import-warning">Non trovati nel catalogo San Mungo: '+esc(d.missing.join(', '))+'.</div>';}
+  if(d.mismatch.length){warn+='<div class="clinical-import-warning">Classificazione non coincidente: '+esc(d.mismatch.join(', '))+'.</div>';}
+  if(!d.importedCount){warn+='<div class="clinical-import-warning">Il pacchetto non contiene Sintomi X-XXXXX importabili automaticamente. Il dato di Salute resta comunque visibile come riferimento OFFGame.</div>';}
+  return '<div class="clinical-import-note">'+
+    '<div class="clinical-import-title"><i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Dati importati nel Reparto Pazienti</div>'+
+    '<div class="clinical-import-grid"><span><strong>Paziente:</strong> '+esc(who)+'</span>'+typ+cause+hp+'<span><strong>Sintomi preselezionati:</strong> '+d.importedCount+'</span></div>'+
+    '<div style="margin-top:7px;font-size:12px">Importazione di praticità <strong>OFFGame</strong>: la preselezione non equivale a una Diagnosi ONGame del Guaritore.</div>'+warn+
+    '</div>';
+}
+
 
 function sintomiScelti(){
 return Array.from(pazienteState.scelti).map(function(id){ return SINTOMI_BY_ID[id]; });
@@ -1315,6 +1480,7 @@ renderStepSintomi(stepper.bodyId(0));
 function renderStepSintomi(bodyId){
 const body = document.getElementById(bodyId);
 body.innerHTML =
+clinicalImportNoticeHtml() +
 '<div class="field searchbar"><label>Cerca un Sintomo</label>' +
 '<input type="text" id="pz-search" placeholder="Es. Frattura, Ustioni, Febbre..."></div>' +
 '<div class="sym-list" id="pz-symlist"></div>' +
@@ -2867,6 +3033,7 @@ window.__medSessionBridge={
  phaseLabel:function(i){return ['Guaritori','Diagnosi','Terapia e Chirurgia','Riepilogo'][Math.max(0,Math.min(3,Number(i)||0))]}
 };
 
+consumeClinicalImport();
 buildPazienteWizard();
 
 </script>
