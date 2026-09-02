@@ -1,3 +1,4 @@
+<!-- v70: link regolamentari contestuali in BBCode + barra riferimenti centrata e sticky sotto il titolo (top:0), 02/09/2026 -->
 <!-- v69: integrazione Elfo — aggiunto reset esplicito “Inizia una nuova pratica” per separare due guarigioni distinte senza perdere l’upsert della pratica corrente; compatibile con Elfo v31. -->
 <!-- v67: secondo audit — Diagnosi resa consapevole del contesto Player/Narratore: in Eventi e Role Masterate i d40 e il 1d30 standard restano bloccati salvo indicazione contraria del Narratore; contesto persistito e non modificabile dopo l’avvio dei tiri. -->
 <!-- v66: secondo audit — il 1d30 di ravvedimento dopo Diagnosi fallita può usare i bonus a Tecnica applicabili alla Diagnosi (es. Manuali dell’Ars/Talismano), consumandone realmente l’uso; un 1d30 preparato e non concluso viene trattato come controllo pendente. -->
@@ -12,7 +13,7 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<title>Medimagia — San Mungo v69</title>
+<title>Medimagia — San Mungo v70</title>
 <!-- v41: import clinico ffmed consumato anche dall'URL; il refresh del Reparto Pazienti torna davvero vuoto -->
 <!-- v44: Incolla i Sintomi riconosce anche elenchi naturali separati da virgole e dalla congiunzione “e/ed” (es. A, B e C). -->
 <!-- v48: migrazione sicura delle sessioni v46 — le vecchie fonti OFFGame automatiche tornano “da confermare”; i nuovi salvataggi ricordano la conferma esplicita. -->
@@ -786,6 +787,58 @@ body{
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
+<style>
+/* v70 — riferimenti regolamentari: sotto il titolo nel flusso, poi aderenti alla cima durante lo scroll. */
+.med-reference-bar{
+  position:sticky;
+  top:0;
+  z-index:1200;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:7px;
+  width:100%;
+  margin:0 auto 22px;
+  padding:8px 10px;
+  background:rgba(241,247,241,.97);
+  border:1px solid #a7c5ac;
+  border-radius:10px;
+  box-shadow:0 5px 16px rgba(36,71,55,.12);
+  backdrop-filter:blur(7px);
+  -webkit-backdrop-filter:blur(7px);
+}
+.med-reference-bar a{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:31px;
+  padding:6px 10px;
+  border:1px solid #a9c8ae;
+  border-radius:999px;
+  background:#fbfdfb;
+  color:#315c46;
+  font-family:'Palatino Linotype','Book Antiqua',Georgia,serif;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.15;
+  text-align:center;
+  text-decoration:none;
+  transition:.15s;
+}
+.med-reference-bar a:hover,
+.med-reference-bar a:focus-visible{
+  background:#943943;
+  border-color:#7f2d36;
+  color:#fff;
+  outline:none;
+}
+@media(max-width:640px){
+  .med-reference-bar{gap:5px;padding:7px 6px;margin-bottom:18px;border-radius:8px}
+  .med-reference-bar a{padding:5px 8px;font-size:11px;min-height:29px}
+}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -796,6 +849,16 @@ body{
 <h1>Ospedale San Mungo per le Malattie e le Ferite Magiche</h1>
 <p>Strumento di gestione Medimagica — Felix Felicis GdR</p>
 <p class="muted" style="margin-top:4px;font-size:12px">Il Reparto Pazienti riparte vuoto a ogni refresh. Il Reparto Medimaghi usa sessioni Firebase salvate, da riprendere esplicitamente quando servono.</p>
+</div>
+
+<div class="med-reference-bar" aria-label="Riferimenti rapidi di Medimagia">
+<a href="https://felixfelicisharrypottergdr.forumfree.it/?t=80621841#guidamedimagia" target="_blank" rel="noopener">Guida alla Medimagia</a>
+<a href="https://felixfelicisharrypottergdr.forumfree.it/?t=80630315#entry676776382" target="_blank" rel="noopener">Enciclopedia Medimagica</a>
+<a href="https://felixfelicisharrypottergdr.forumfree.it/?t=80630315#conomedimag" target="_blank" rel="noopener">Tecniche e Incantesimi</a>
+<a href="https://felixfelicisharrypottergdr.forumfree.it/?t=80621841#diagnosi" target="_blank" rel="noopener">Diagnosi</a>
+<a href="https://felixfelicisharrypottergdr.forumfree.it/?t=80621841#terapia" target="_blank" rel="noopener">Terapia</a>
+<a href="https://felixfelicisharrypottergdr.forumfree.it/?t=80621841#chirurgia" target="_blank" rel="noopener">Chirurgia</a>
+<a href="https://felixfelicisharrypottergdr.forumfree.it/?t=80621841#sanmungo" target="_blank" rel="noopener">San Mungo</a>
 </div>
 
 <div class="seal-toggle">
@@ -950,6 +1013,35 @@ function esc(s){
 const d = document.createElement('div');
 d.textContent = s;
 return d.innerHTML;
+}
+
+/* ===== v70: riferimenti ForumFree nei testi copiabili ===== */
+function medBbUrl(href,label){return '[url='+href+']'+label+'[/url]';}
+function medSymptomBb(ss){return ss?medBbUrl('?t=80630315#'+ss.id,ss.n):'';}
+function medMetodoBb(key,nome){
+  const anchors={
+    sanmungo:'rivolgersimungo',
+    auto:'automedicazione',
+    spontanea:'guarispontanea',
+    spontanea_bg:'guarispontanea',
+    riposo:'riposoforzato',
+    offgame:'guarioff',
+    offgame_ant:'guarioff'
+  };
+  return anchors[key]?medBbUrl('?t=80621841#'+anchors[key],nome):nome;
+}
+function medDiceBBRefs(label){
+  const txt=String(label||'');
+  const refs=[];
+  function add(href,nome){const code=medBbUrl(href,nome);if(refs.indexOf(code)<0)refs.push(code);}
+  if(/Riconosce tutti i Sintomi|errore e pu[oò] ritentare/i.test(txt)){add('?t=80621841#diagnosi','Diagnosi');}
+  if(/\bTerapia\b/i.test(txt)){add('?t=80621841#terapia','Terapia');}
+  if(/\bChirurgia\b/i.test(txt)){add('?t=80621841#chirurgia','Chirurgia');}
+  if(/Nessuna Complicazione/i.test(txt)){add('?t=80621841#guaripassiva','Guarigione Passiva');}
+  if(typeof SINTOMI!=='undefined'){
+    SINTOMI.forEach(function(ss){if(txt.indexOf(ss.n)>=0){add('?t=80630315#'+ss.id,ss.n);}});
+  }
+  return refs.join(' · ');
 }
 
 /* ===== v42: ricerca tollerante e incolla libera Sintomi ===== */
@@ -1200,7 +1292,8 @@ return;
 }
 
 const label = opts.successLabel + ' se 1-' + totale + ' (' + formula + ')';
-const tag = '[dice=1d' + opts.faces + ']' + label + '[/dice]';
+const medRefs = medDiceBBRefs(opts.successLabel);
+const tag = '[dice=1d' + opts.faces + ']' + label + '[/dice]' + (medRefs ? ' — ' + medRefs : '');
 
 container.innerHTML =
 '<div class="dice-widget">' +
@@ -2477,7 +2570,9 @@ document.getElementById('spesa-riga').textContent = roleTesto + ' — ' + nomeMe
 }
 document.getElementById('spesa-role').addEventListener('input', aggiornaRigaSpesa);
 onPress(document.getElementById('spesa-copia'), function(){
-copyText(document.getElementById('spesa-riga').textContent, document.getElementById('spesa-copia'));
+const role = document.getElementById('spesa-role').value.trim();
+const roleTesto = role.length ? role : '[nome o link della role]';
+copyText(roleTesto + ' — ' + medMetodoBb(metodo,nomeMetodo) + ' — ' + costo + ' Galeoni', document.getElementById('spesa-copia'));
 });
 aggiornaRigaSpesa();
 }
@@ -3766,7 +3861,7 @@ const res=medimagoState.creaRitentativoCura(item);if(!res||!res.ok){warn.textCon
 warn.textContent='';aggiornaTutteLeComplicazioniCura();const inp=document.querySelector('#cura-dice-'+res.item.uid+' input[type=number]');if(inp){inp.focus();inp.scrollIntoView({behavior:'smooth',block:'center'});}
 });
 }
-function testoCopiaComplicazione(ss,reg){return 'Complicazione di '+ss.n+': '+reg.testo;}
+function testoCopiaComplicazione(ss,reg){return 'Complicazione di '+medSymptomBb(ss)+': '+reg.testo;}
 function htmlCopiaComplicazione(uid){return '<div class="complication-copy-row"><button type="button" class="btn small gold complication-copy" data-copy-id="'+uid+'"><i class="fa-solid fa-copy" aria-hidden="true"></i> Copia la Complicazione</button></div>';}
 function collegaCopiaComplicazione(container,uid,testo){if(!container)return;const bt=container.querySelector('.complication-copy[data-copy-id="'+uid+'"]');if(bt){onPress(bt,function(){copyText(testo,bt);});}}
 function renderComplicazioneAnteprima(container,ss,esito){
@@ -3795,7 +3890,7 @@ let extra='';
 if(reg.tipo==='d5'){
 widgetCounter+=1;
 const uid='cmprem'+widgetCounter+'_'+item.uid;
-const tag='[dice=1d5]Complicazione di '+ss.n+': '+reg.testo+'[/dice]';
+const tag='[dice=1d5]Complicazione di '+ss.n+': '+reg.testo+'[/dice] — '+medSymptomBb(ss);
 extra='<div class="dice-widget" style="margin-top:10px"><div class="muted">Il 1d5 indicato nella scheda si usa nei post in cui il PG ruola la Complicazione.</div><div class="dice-tag" id="'+uid+'_tag">'+esc(tag)+'</div><div class="dice-actions"><button type="button" class="btn small gold" id="'+uid+'_copy">Copia il 1d5 di promemoria</button></div></div>';
 const copyUid='cmp-copy-'+item.uid;container.innerHTML='<div class="complication-card"><div class="complication-label">Complicazione da applicare al PG</div><strong>'+titolo.replace(/<\/?b>/g,'')+esc(reg.testo)+'</strong></div>'+htmlCopiaComplicazione(copyUid)+regolaRitentativo+limiteAzioni+extra;collegaCopiaComplicazione(container,copyUid,testoCopiaComplicazione(ss,reg));
 onPress(document.getElementById(uid+'_copy'),function(){copyText(tag,document.getElementById(uid+'_copy'));});
